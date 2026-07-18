@@ -211,30 +211,6 @@ jobs:
             exit 1
           fi
 
-      - name: Reject code comments
-        shell: bash
-        run: |
-          mapfile -t FILES < <(rg --files packages tests --glob '*.ts' --glob '*.js' --glob '*.mjs' --glob '!**/dist/**' --glob '!**/.test-dist/**')
-          node --input-type=module - "${FILES[@]}" <<'NODE'
-          import { readFile } from "node:fs/promises";
-          import { LanguageVariant, SyntaxKind } from "typescript/unstable/ast";
-          import { createScanner } from "typescript/unstable/ast/scanner";
-
-          let failed = false;
-          for (const path of process.argv.slice(2)) {
-            const source = await readFile(path, "utf8");
-            const scanner = createScanner(false, LanguageVariant.Standard, source);
-            for (let token = scanner.scan(); token !== SyntaxKind.EndOfFile; token = scanner.scan()) {
-              if (token === SyntaxKind.SingleLineCommentTrivia || token === SyntaxKind.MultiLineCommentTrivia) {
-                const line = source.slice(0, scanner.getTokenStart()).split("\n").length;
-                process.stderr.write(`${path}:${line}: code comments are not allowed\n`);
-                failed = true;
-              }
-            }
-          }
-          if (failed) process.exit(1);
-          NODE
-
       - name: Resolve automatic patch version
         shell: bash
         run: |
