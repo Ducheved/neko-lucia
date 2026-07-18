@@ -1,0 +1,33 @@
+{
+  "name": "neko-lucia-monorepo",
+  "version": "0.1.0",
+  "description": "Server-side sessions for Node and Deno with Lucia v3 migration support",
+  "private": true,
+  "packageManager": "pnpm@11.14.0",
+  "scripts": {
+    "build": "pnpm -r --filter @ducheved/neko-lucia --filter @ducheved/neko-lucia-adapter-drizzle run build",
+    "lint": "deno lint",
+    "test": "pnpm --filter @ducheved/neko-lucia run build && pnpm -r --filter @ducheved/neko-lucia --filter @ducheved/neko-lucia-adapter-drizzle run test",
+    "test:deno": "deno run --sloppy-imports --node-modules-dir=manual tests/deno-smoke.mjs",
+    "typecheck": "pnpm --filter @ducheved/neko-lucia run build && pnpm -r --filter @ducheved/neko-lucia --filter @ducheved/neko-lucia-adapter-drizzle run typecheck",
+    "verify": "pnpm typecheck && pnpm test && pnpm build"
+  },
+  "author": "Ducheved",
+  "license": "MIT",
+  "homepage": "https://github.com/Ducheved/neko-lucia#readme",
+  "bugs": {
+    "url": "https://github.com/Ducheved/neko-lucia/issues"
+  },
+  "engines": {
+    "deno": ">=2.9.0",
+    "node": "^22.23.1 || ^24.18.0 || >=26.0.0",
+    "pnpm": ">=11.14.0"
+  },
+  "devDependencies": {
+    "@ducheved/neko-lucia": "workspace:*",
+    "@ducheved/neko-lucia-adapter-drizzle": "workspace:*",
+    "@types/node": "22.20.1",
+    "drizzle-orm": "0.45.2",
+    "typescript": "7.0.2"
+  }
+}

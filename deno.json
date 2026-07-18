@@ -1,0 +1,31 @@
+{
+  "imports": {
+    "@ducheved/neko-lucia": "./packages/lucia/src/index.ts",
+    "@ducheved/neko-lucia-adapter-drizzle": "./packages/adapter-drizzle/src/index.ts"
+  },
+  "lint": {
+    "include": [
+      "packages/lucia/src/",
+      "packages/adapter-drizzle/src/",
+      "tests/"
+    ],
+    "rules": {
+      "tags": [
+        "recommended"
+      ],
+      "include": [
+        "eqeqeq",
+        "explicit-module-boundary-types",
+        "no-console",
+        "no-eval",
+        "no-non-null-assertion",
+        "no-throw-literal",
+        "prefer-ascii",
+        "verbatim-module-syntax"
+      ],
+      "exclude": [
+        "no-empty-interface"
+      ]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+Based on Lucia v3 by pilcrowOnPaper / lucia-auth.
+Original project: https://github.com/lucia-auth/lucia (MIT License)
+
+This repository is an independent maintenance fork named neko-lucia,
+maintained by @Ducheved.
+
+It is not affiliated with, endorsed by, or an official continuation of
+the original Lucia project.
+
+The initial one-commit import did not preserve upstream Git ancestry, so
+its exact source commit cannot be proven from this repository. The Lucia
+v3 branch tip checked on 2026-07-17 was
+fc016ca8deb62b1925298ac2625254afa5ae1531. Future upstream ports must name
+their source commit and intentional deltas in normal Git history.

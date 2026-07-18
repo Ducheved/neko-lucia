@@ -1,0 +1,342 @@
+name: Publish
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-auto
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      artifact-digest: ${{ steps.identity.outputs.artifact-digest }}
+      artifact-id: ${{ steps.identity.outputs.artifact-id }}
+      ci-run-id: ${{ steps.identity.outputs.ci-run-id }}
+      release-sha: ${{ steps.identity.outputs.release-sha }}
+      version: ${{ steps.artifacts.outputs.version }}
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 26.x
+          package-manager-cache: false
+
+      - name: Resolve immutable CI artifact
+        id: identity
+        shell: bash
+        env:
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$CI_RUN_ID/artifacts?name=npm-packages&per_page=100" > "$RUNNER_TEMP/artifacts.json"
+          ARTIFACT_JSON="$RUNNER_TEMP/artifacts.json" node --input-type=module <<'NODE'
+          import { appendFile, readFile } from "node:fs/promises";
+
+          const payload = JSON.parse(await readFile(process.env.ARTIFACT_JSON, "utf8"));
+          const artifacts = payload.artifacts.filter((artifact) => artifact.name === "npm-packages" && !artifact.expired);
+          if (artifacts.length !== 1) throw new Error(`expected one npm-packages artifact, got ${artifacts.length}`);
+          const artifact = artifacts[0];
+          if (artifact.workflow_run?.id !== Number(process.env.CI_RUN_ID)) throw new Error("artifact run mismatch");
+          if (artifact.workflow_run?.head_sha !== process.env.RELEASE_SHA) throw new Error("artifact commit mismatch");
+          if (typeof artifact.digest !== "string" || !artifact.digest.startsWith("sha256:")) throw new Error("artifact digest missing");
+          await appendFile(process.env.GITHUB_OUTPUT, [
+            `artifact-digest=${artifact.digest}`,
+            `artifact-id=${artifact.id}`,
+            `ci-run-id=${process.env.CI_RUN_ID}`,
+            `release-sha=${process.env.RELEASE_SHA}`
+          ].join("\n") + "\n");
+          NODE
+
+      - name: Download immutable CI artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: ${{ steps.identity.outputs.artifact-id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.identity.outputs.ci-run-id }}
+          path: ${{ runner.temp }}/npm-packages
+          digest-mismatch: error
+
+      - name: Verify exact package bytes
+        id: artifacts
+        shell: bash
+        env:
+          CI_RUN_ID: ${{ steps.identity.outputs.ci-run-id }}
+          RELEASE_SHA: ${{ steps.identity.outputs.release-sha }}
+        run: |
+          ARTIFACT_DIR="$RUNNER_TEMP/npm-packages"
+          CORE_TGZ=$(ARTIFACT_DIR="$ARTIFACT_DIR" node -p "require(process.env.ARTIFACT_DIR + '/core-pack.json').filename")
+          ADAPTER_TGZ=$(ARTIFACT_DIR="$ARTIFACT_DIR" node -p "require(process.env.ARTIFACT_DIR + '/adapter-pack.json').filename")
+          tar -xOf "$ARTIFACT_DIR/$CORE_TGZ" package/package.json > "$RUNNER_TEMP/core-package.json"
+          tar -xOf "$ARTIFACT_DIR/$ADAPTER_TGZ" package/package.json > "$RUNNER_TEMP/adapter-package.json"
+          ARTIFACT_DIR="$ARTIFACT_DIR" CORE_MANIFEST="$RUNNER_TEMP/core-package.json" ADAPTER_MANIFEST="$RUNNER_TEMP/adapter-package.json" node --input-type=module <<'NODE'
+          import { createHash } from "node:crypto";
+          import { appendFile, readFile, readdir } from "node:fs/promises";
+
+          const directory = process.env.ARTIFACT_DIR;
+          const release = JSON.parse(await readFile(`${directory}/release.json`, "utf8"));
+          const corePack = JSON.parse(await readFile(`${directory}/core-pack.json`, "utf8"));
+          const adapterPack = JSON.parse(await readFile(`${directory}/adapter-pack.json`, "utf8"));
+          const core = JSON.parse(await readFile(process.env.CORE_MANIFEST, "utf8"));
+          const adapter = JSON.parse(await readFile(process.env.ADAPTER_MANIFEST, "utf8"));
+          if (release.sha !== process.env.RELEASE_SHA || String(release.runId) !== process.env.CI_RUN_ID) throw new Error("release identity mismatch");
+          if (!/^\d+\.\d+\.\d+$/.test(release.version)) throw new Error("invalid release version");
+          if (core.name !== "@ducheved/neko-lucia" || core.version !== release.version) throw new Error("invalid core manifest");
+          if (adapter.name !== "@ducheved/neko-lucia-adapter-drizzle" || adapter.version !== release.version) throw new Error("invalid adapter manifest");
+          if (adapter.peerDependencies?.[core.name] !== release.version || adapter.peerDependencies?.["drizzle-orm"] !== "0.45.2") throw new Error("invalid adapter peers");
+          const expectedFiles = new Set(["release.json", "core-pack.json", "adapter-pack.json", corePack.filename, adapterPack.filename]);
+          const actualFiles = new Set(await readdir(directory));
+          if (expectedFiles.size !== actualFiles.size || [...expectedFiles].some((file) => !actualFiles.has(file))) throw new Error("unexpected artifact payload");
+          for (const [pack, manifest] of [[corePack, core], [adapterPack, adapter]]) {
+            if (pack.name !== manifest.name || pack.version !== manifest.version || typeof pack.integrity !== "string") throw new Error("pack metadata mismatch");
+            const bytes = await readFile(`${directory}/${pack.filename}`);
+            const integrity = `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
+            if (integrity !== pack.integrity) throw new Error("tarball integrity mismatch");
+            const files = new Set(pack.files.map((file) => file.path));
+            for (const required of ["package.json", "README.md", "LICENSE", "NOTICE", "dist/index.js", "dist/index.d.ts"]) {
+              if (!files.has(required)) throw new Error(`${manifest.name} missing ${required}`);
+            }
+            for (const file of files) {
+              if (!/^(package\.json|README\.md|LICENSE|NOTICE|dist\/.+\.(js|d\.ts))$/.test(file)) throw new Error(`${manifest.name} unexpected file ${file}`);
+            }
+          }
+          await appendFile(process.env.GITHUB_OUTPUT, `version=${release.version}\n`);
+          NODE
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 26.x
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Recheck artifact identity
+        shell: bash
+        env:
+          ARTIFACT_DIGEST: ${{ needs.verify.outputs.artifact-digest }}
+          ARTIFACT_ID: ${{ needs.verify.outputs.artifact-id }}
+          CI_RUN_ID: ${{ needs.verify.outputs.ci-run-id }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ needs.verify.outputs.release-sha }}
+        run: |
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID" > "$RUNNER_TEMP/artifact.json"
+          ARTIFACT_JSON="$RUNNER_TEMP/artifact.json" node --input-type=module <<'NODE'
+          import { readFile } from "node:fs/promises";
+
+          const artifact = JSON.parse(await readFile(process.env.ARTIFACT_JSON, "utf8"));
+          if (artifact.expired || artifact.id !== Number(process.env.ARTIFACT_ID)) throw new Error("artifact missing or expired");
+          if (artifact.digest !== process.env.ARTIFACT_DIGEST) throw new Error("artifact digest changed");
+          if (artifact.workflow_run?.id !== Number(process.env.CI_RUN_ID)) throw new Error("artifact run changed");
+          if (artifact.workflow_run?.head_sha !== process.env.RELEASE_SHA) throw new Error("artifact commit changed");
+          NODE
+
+      - name: Download exact package bytes
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: ${{ needs.verify.outputs.artifact-id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.verify.outputs.ci-run-id }}
+          path: ${{ runner.temp }}/npm-packages
+          digest-mismatch: error
+
+      - name: Publish exact versions
+        shell: bash
+        env:
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
+            CORE_EXISTS=false
+            ADAPTER_EXISTS=false
+            for entry in "@ducheved/neko-lucia:CORE_EXISTS" "@ducheved/neko-lucia-adapter-drizzle:ADAPTER_EXISTS"; do
+              name=${entry%%:*}
+              variable=${entry##*:}
+              error_file="$RUNNER_TEMP/npm-package-view-error.log"
+              set +e
+              npx --yes npm@12.0.1 view "$name" name >/dev/null 2>"$error_file"
+              status=$?
+              set -e
+              if [ "$status" -eq 0 ]; then
+                printf -v "$variable" true
+              elif ! grep -q "E404" "$error_file"; then
+                cat "$error_file" >&2
+                exit "$status"
+              fi
+            done
+            if [ "$CORE_EXISTS" = true ] && [ "$ADAPTER_EXISTS" = true ]; then
+              echo "Remove NPM_TOKEN before publishing an existing package pair" >&2
+              exit 1
+            fi
+          fi
+          ARTIFACT_DIR="$RUNNER_TEMP/npm-packages"
+          CORE_TGZ=$(ARTIFACT_DIR="$ARTIFACT_DIR" node -p "require(process.env.ARTIFACT_DIR + '/core-pack.json').filename")
+          CORE_INTEGRITY=$(ARTIFACT_DIR="$ARTIFACT_DIR" node -p "require(process.env.ARTIFACT_DIR + '/core-pack.json').integrity")
+          ADAPTER_TGZ=$(ARTIFACT_DIR="$ARTIFACT_DIR" node -p "require(process.env.ARTIFACT_DIR + '/adapter-pack.json').filename")
+          ADAPTER_INTEGRITY=$(ARTIFACT_DIR="$ARTIFACT_DIR" node -p "require(process.env.ARTIFACT_DIR + '/adapter-pack.json').integrity")
+          test "sha512-$(openssl dgst -sha512 -binary "$ARTIFACT_DIR/$CORE_TGZ" | base64 -w0)" = "$CORE_INTEGRITY"
+          test "sha512-$(openssl dgst -sha512 -binary "$ARTIFACT_DIR/$ADAPTER_TGZ" | base64 -w0)" = "$ADAPTER_INTEGRITY"
+          publish_one() {
+            local name="$1"
+            local tarball="$2"
+            local integrity="$3"
+            local other_name="$4"
+            local error_file="$RUNNER_TEMP/npm-view-error.log"
+            local registry
+            local status
+            set +e
+            registry=$(npx --yes npm@12.0.1 view "$name@$EXPECTED_VERSION" dist --json 2>"$error_file")
+            status=$?
+            set -e
+            if [ "$status" -eq 0 ]; then
+              REGISTRY_DIST="$registry" EXPECTED_INTEGRITY="$integrity" node --input-type=module -e '
+                const parsed = JSON.parse(process.env.REGISTRY_DIST);
+                const dist = Array.isArray(parsed) ? parsed[0] : parsed;
+                if (dist.integrity !== process.env.EXPECTED_INTEGRITY) throw new Error("registry integrity mismatch");
+                if (typeof dist.attestations?.url !== "string") throw new Error("registry attestation missing");
+                if (dist.attestations?.provenance?.predicateType !== "https://slsa.dev/provenance/v1") throw new Error("registry provenance mismatch");
+              '
+              return
+            fi
+            if ! grep -q "E404" "$error_file"; then
+              cat "$error_file" >&2
+              return "$status"
+            fi
+            latest_version() {
+              local latest_name="$1"
+              local latest_error="$RUNNER_TEMP/npm-latest-view-error.log"
+              local latest_status
+              local latest_value
+              set +e
+              latest_value=$(npx --yes npm@12.0.1 view "$latest_name@latest" version 2>"$latest_error")
+              latest_status=$?
+              set -e
+              if [ "$latest_status" -eq 0 ]; then
+                printf '%s' "$latest_value"
+                return
+              fi
+              if grep -q "E404" "$latest_error"; then
+                return
+              fi
+              cat "$latest_error" >&2
+              return "$latest_status"
+            }
+            local own_latest
+            local other_latest
+            own_latest=$(latest_version "$name")
+            other_latest=$(latest_version "$other_name")
+            local tag
+            tag=$(OWN_LATEST="$own_latest" OTHER_LATEST="$other_latest" RELEASE_VERSION="$EXPECTED_VERSION" node --input-type=module -e '
+              const parse = (value) => value.split(".").map(Number);
+              const compare = (left, right) => {
+                for (let index = 0; index < 3; index++) {
+                  if (left[index] !== right[index]) return left[index] - right[index];
+                }
+                return 0;
+              };
+              const release = parse(process.env.RELEASE_VERSION);
+              const latest = [process.env.OWN_LATEST, process.env.OTHER_LATEST].filter(Boolean).map(parse).sort(compare).at(-1);
+              process.stdout.write(latest === undefined || compare(release, latest) >= 0 ? "latest" : "backfill");
+            ')
+            for _ in $(seq 1 3); do
+              if npx --yes npm@12.0.1 publish "$ARTIFACT_DIR/$tarball" --ignore-scripts --provenance --access public --tag "$tag"; then
+                return
+              fi
+              sleep 10
+            done
+            return 1
+          }
+          publish_one "@ducheved/neko-lucia" "$CORE_TGZ" "$CORE_INTEGRITY" "@ducheved/neko-lucia-adapter-drizzle"
+          publish_one "@ducheved/neko-lucia-adapter-drizzle" "$ADAPTER_TGZ" "$ADAPTER_INTEGRITY" "@ducheved/neko-lucia"
+
+      - name: Verify npm registry
+        shell: bash
+        env:
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          ARTIFACT_DIR="$RUNNER_TEMP/npm-packages"
+          CORE_INTEGRITY=$(ARTIFACT_DIR="$ARTIFACT_DIR" node -p "require(process.env.ARTIFACT_DIR + '/core-pack.json').integrity")
+          ADAPTER_INTEGRITY=$(ARTIFACT_DIR="$ARTIFACT_DIR" node -p "require(process.env.ARTIFACT_DIR + '/adapter-pack.json').integrity")
+          verify_one() {
+            local name="$1"
+            local expected="$2"
+            local registry
+            registry=$(npx --yes npm@12.0.1 view "$name@$EXPECTED_VERSION" dist --json 2>/dev/null) || return 1
+            REGISTRY_DIST="$registry" EXPECTED_INTEGRITY="$expected" node --input-type=module -e '
+              const parsed = JSON.parse(process.env.REGISTRY_DIST);
+              const dist = Array.isArray(parsed) ? parsed[0] : parsed;
+              if (dist.integrity !== process.env.EXPECTED_INTEGRITY) process.exit(1);
+              if (typeof dist.attestations?.url !== "string") process.exit(1);
+              if (dist.attestations?.provenance?.predicateType !== "https://slsa.dev/provenance/v1") process.exit(1);
+            '
+          }
+          ready=false
+          for _ in $(seq 1 30); do
+            if verify_one "@ducheved/neko-lucia" "$CORE_INTEGRITY" && verify_one "@ducheved/neko-lucia-adapter-drizzle" "$ADAPTER_INTEGRITY"; then
+              ready=true
+              break
+            fi
+            sleep 10
+          done
+          test "$ready" = true
+          mkdir "$RUNNER_TEMP/registry-smoke"
+          cd "$RUNNER_TEMP/registry-smoke"
+          npx --yes npm@12.0.1 init --yes
+          npx --yes npm@12.0.1 install --ignore-scripts "@ducheved/neko-lucia@$EXPECTED_VERSION" "@ducheved/neko-lucia-adapter-drizzle@$EXPECTED_VERSION" drizzle-orm@0.45.2
+          npx --yes npm@12.0.1 audit signatures --json --include-attestations > "$RUNNER_TEMP/audit-signatures.json"
+          AUDIT_REPORT="$RUNNER_TEMP/audit-signatures.json" CORE_INTEGRITY="$CORE_INTEGRITY" ADAPTER_INTEGRITY="$ADAPTER_INTEGRITY" PUBLISH_RUN_ID="$GITHUB_RUN_ID" node --input-type=module <<'NODE'
+          import { readFile } from "node:fs/promises";
+
+          const report = JSON.parse(await readFile(process.env.AUDIT_REPORT, "utf8"));
+          if ((report.invalid?.length ?? 0) !== 0 || (report.missing?.length ?? 0) !== 0) throw new Error("signature audit reported invalid or missing entries");
+          const expected = new Map([
+            ["@ducheved/neko-lucia", process.env.CORE_INTEGRITY],
+            ["@ducheved/neko-lucia-adapter-drizzle", process.env.ADAPTER_INTEGRITY]
+          ]);
+          for (const [name, integrity] of expected) {
+            const entry = report.verified?.find((candidate) => candidate.name === name && candidate.version === process.env.EXPECTED_VERSION);
+            if (entry === undefined) throw new Error(`${name} has no verified signature entry`);
+            const attestation = entry.attestationBundles?.find((candidate) => candidate.predicateType === "https://slsa.dev/provenance/v1");
+            if (attestation === undefined) throw new Error(`${name} has no SLSA v1 attestation`);
+            const statement = JSON.parse(Buffer.from(attestation.bundle.dsseEnvelope.payload, "base64").toString("utf8"));
+            const expectedHash = Buffer.from(integrity.slice("sha512-".length), "base64").toString("hex");
+            if (!statement.subject?.some((subject) => subject.digest?.sha512 === expectedHash)) throw new Error(`${name} provenance subject mismatch`);
+            const definition = statement.predicate?.buildDefinition;
+            const workflow = definition?.externalParameters?.workflow;
+            const invocation = statement.predicate?.runDetails?.metadata?.invocationId;
+            if (definition?.buildType !== "https://slsa-framework.github.io/github-actions-buildtypes/workflow/v1") throw new Error(`${name} provenance build type mismatch`);
+            if (workflow?.repository?.toLowerCase() !== "https://github.com/ducheved/neko-lucia") throw new Error(`${name} provenance repository mismatch`);
+            if (workflow?.path !== ".github/workflows/publish.yml" || workflow?.ref !== "refs/heads/main") throw new Error(`${name} provenance workflow mismatch`);
+            if (definition?.internalParameters?.github?.event_name !== "workflow_run") throw new Error(`${name} provenance event mismatch`);
+            if (statement.predicate?.runDetails?.builder?.id !== "https://github.com/actions/runner/github-hosted") throw new Error(`${name} provenance builder mismatch`);
+            if (typeof invocation !== "string" || !invocation.includes(`/actions/runs/${process.env.PUBLISH_RUN_ID}/attempts/`)) throw new Error(`${name} provenance run mismatch`);
+          }
+          NODE
+          node --input-type=module -e 'import("@ducheved/neko-lucia").then((module) => { if (typeof module.Lucia !== "function") process.exit(1); })'
+          node --input-type=module -e 'import("@ducheved/neko-lucia-adapter-drizzle").then((module) => { if (typeof module.DrizzlePostgreSQLAdapter !== "function") process.exit(1); })'

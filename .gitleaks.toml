@@ -1,0 +1,15 @@
+title = "neko-lucia"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Generated and local-only paths"
+paths = [
+	'''(^|[\\/])\.git([\\/]|$)''',
+	'''(^|[\\/])node_modules([\\/]|$)''',
+	'''(^|[\\/])\.pnpm-store([\\/]|$)''',
+	'''(^|[\\/])dist([\\/]|$)''',
+	'''(^|[\\/])\.test-dist([\\/]|$)''',
+	'''(^|[\\/])artifacts([\\/]|$)'''
+]
