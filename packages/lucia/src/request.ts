@@ -1,23 +1,20 @@
+const HTTP_PREFIX_RE = /^https?:\/\//i;
+
 export function verifyRequestOrigin(origin: string, allowedDomains: string[]): boolean {
-	if (!origin || allowedDomains.length === 0) {
+	if (!origin || allowedDomains.length < 1) {
 		return false;
 	}
-	const originHost = safeURL(origin)?.host ?? null;
+
+	const originHost = safeURL(origin)?.host;
 	if (!originHost) {
 		return false;
 	}
-	for (const domain of allowedDomains) {
-		let host: string | null;
-		if (domain.startsWith("http://") || domain.startsWith("https://")) {
-			host = safeURL(domain)?.host ?? null;
-		} else {
-			host = safeURL("https://" + domain)?.host ?? null;
-		}
-		if (originHost === host) {
-			return true;
-		}
-	}
-	return false;
+
+	return allowedDomains.some((rawDomain) => {
+		const domain = HTTP_PREFIX_RE.test(rawDomain) ? rawDomain : `https://${rawDomain}`;
+
+		return originHost === safeURL(domain)?.host;
+	});
 }
 
 function safeURL(url: URL | string): URL | null {

@@ -10,26 +10,27 @@ export class TimeSpan {
 	public unit: TimeSpanUnit;
 
 	public milliseconds(): number {
-		if (this.unit === "ms") {
-			return this.value;
-		}
-		if (this.unit === "s") {
-			return this.value * 1000;
-		}
-		if (this.unit === "m") {
-			return this.value * 1000 * 60;
-		}
-		if (this.unit === "h") {
-			return this.value * 1000 * 60 * 60;
-		}
-		if (this.unit === "d") {
-			return this.value * 1000 * 60 * 60 * 24;
-		}
-		return this.value * 1000 * 60 * 60 * 24 * 7;
+		return this.unit === "ms" ? this.value : this.seconds() * 1000;
 	}
 
 	public seconds(): number {
-		return this.milliseconds() / 1000;
+		switch (this.unit) {
+			case "ms":
+				return this.value / 1000;
+			case "s":
+				return this.value;
+			case "m":
+				return this.value * 60;
+			case "h":
+				return this.value * 60 * 60;
+			case "d":
+				return this.value * 60 * 60 * 24;
+			case "w":
+				return this.value * 60 * 60 * 24 * 7;
+			default:
+				// Do no evil
+				throw new RangeError(`Unexpected unit type ${this.unit as string} for timespan`);
+		}
 	}
 
 	public transform(x: number): TimeSpan {
@@ -37,10 +38,6 @@ export class TimeSpan {
 	}
 }
 
-export function isWithinExpirationDate(date: Date): boolean {
-	return Date.now() < date.getTime();
-}
+export const isWithinExpirationDate = (date: Date): boolean => Date.now() < date.getTime();
 
-export function createDate(timeSpan: TimeSpan): Date {
-	return new Date(Date.now() + timeSpan.milliseconds());
-}
+export const createDate = (timeSpan: TimeSpan): Date => new Date(Date.now() + timeSpan.milliseconds());
