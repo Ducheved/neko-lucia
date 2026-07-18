@@ -53,7 +53,7 @@
   },
   "engines": {
     "deno": ">=2.9.0",
-    "node": "^22.23.1 || ^24.18.0 || >=26.0.0"
+    "node": "^22.23.1 || ^24.18.0 || ^26.0.0"
   },
   "peerDependencies": {
     "@ducheved/neko-lucia": "0.1.0",

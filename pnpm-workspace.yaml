@@ -1,5 +1,8 @@
 packages:
   - "packages/*"
 
+overrides:
+  "@types/node": 22.20.1
+
 allowBuilds:
   better-sqlite3: true
