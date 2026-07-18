@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test, type TestContext } from "node:test";
 
-import { generateIdFromEntropySize } from "../src/index.js";
-import { createLegacySessionToken, createSessionToken, parseSessionToken, verifySessionSecret } from "../src/token.js";
+import {
+	createLegacySessionToken,
+	createSessionToken,
+	generateIdFromEntropySize,
+	parseSessionToken,
+	verifySessionSecret,
+} from "../src/token.js";
 
-test("matches the Lucia v3 Base32 output", (context) => {
+test("matches the Lucia v3 Base32 output", (context: TestContext) => {
 	context.mock.method(
 		globalThis.crypto,
 		"getRandomValues",
@@ -47,20 +52,24 @@ test("creates canonical v2 token material", () => {
 	assert.equal(material.token.length, 66);
 	assert.equal(material.token[22], ".");
 	assert.equal(material.secretHash.byteLength, 32);
+
 	const parsed = parseSessionToken(material.token);
-	assert.notEqual(parsed, null);
-	assert.equal(parsed?.tokenVersion, 2);
-	if (parsed?.tokenVersion === 2) {
-		assert.equal(parsed.id, material.id);
-		assert.equal(parsed.secret.byteLength, 32);
-		assert.equal(verifySessionSecret(parsed.secret, material.secretHash), true);
-	}
+	assert.ok(parsed);
+	assert.equal(parsed?.tokenVersion, 2, "Expected a v2 token");
+
+	assert.equal(parsed.id, material.id);
+	assert.equal(parsed.secret.byteLength, 32);
+	assert.equal(verifySessionSecret(parsed.secret, material.secretHash), true);
 });
+
+// @NOTE: copied and not referenced to catch spurious changes to the legacy
+// token pattern in token.ts
+const LEGACY_TOKEN_RE = /^[a-z2-7]{40}$/;
 
 test("creates Lucia v3 compatible legacy tokens", () => {
 	for (let index = 0; index < 100; index++) {
 		const token = createLegacySessionToken();
-		assert.match(token, /^[a-z2-7]{40}$/);
+		assert.match(token, LEGACY_TOKEN_RE);
 		assert.deepEqual(parseSessionToken(token), {
 			id: token,
 			tokenVersion: 1,
@@ -82,13 +91,14 @@ test("rejects malformed and non-canonical tokens", () => {
 		"_".repeat(40),
 	];
 	for (const value of cases) {
-		assert.equal(parseSessionToken(value), null);
+		assert.ok(!parseSessionToken(value));
 	}
 });
 
 test("validates custom IDs for the active format", () => {
 	const v2 = createSessionToken();
 	assert.equal(createSessionToken(v2.id).id, v2.id);
+
 	const legacy = createLegacySessionToken();
 	assert.equal(createLegacySessionToken(legacy), legacy);
 	assert.throws(() => createSessionToken(legacy), TypeError);
@@ -98,12 +108,12 @@ test("validates custom IDs for the active format", () => {
 test("rejects hashes with a wrong value or length", () => {
 	const material = createSessionToken();
 	const parsed = parseSessionToken(material.token);
-	assert.notEqual(parsed, null);
-	if (parsed?.tokenVersion !== 2) {
-		assert.fail("Expected a v2 token");
-	}
+	assert.ok(parsed);
+
+	assert.equal(parsed?.tokenVersion, 2, "Expected a v2 token");
+
 	const wrongHash = new Uint8Array(material.secretHash);
 	wrongHash[0] ^= 255;
-	assert.equal(verifySessionSecret(parsed.secret, wrongHash), false);
-	assert.equal(verifySessionSecret(parsed.secret, wrongHash.subarray(0, 31)), false);
+	assert.ok(!verifySessionSecret(parsed.secret, wrongHash));
+	assert.ok(!verifySessionSecret(parsed.secret, wrongHash.subarray(0, 31)));
 });
