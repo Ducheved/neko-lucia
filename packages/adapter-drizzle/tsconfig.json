@@ -1,16 +1,10 @@
 {
+  "extends": "./tsconfig.build.json",
   "compilerOptions": {
-    "strict": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "target": "ES2022",
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "declaration": true,
-    "types": ["node"],
-    "verbatimModuleSyntax": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true
+    "rootDir": ".",
+    "outDir": "./.test-dist",
+    "declaration": false
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts"],
+  "exclude": []
 }
