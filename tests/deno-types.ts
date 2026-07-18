@@ -3,7 +3,7 @@ import {
 	DrizzlePostgreSQLAdapter,
 	DrizzleSQLiteAdapter
 } from "@ducheved/neko-lucia-adapter-drizzle";
-import { Lucia } from "@ducheved/neko-lucia";
+import { generateIdFromEntropySize, Lucia } from "@ducheved/neko-lucia";
 
 import type { Adapter } from "@ducheved/neko-lucia";
 
@@ -33,7 +33,9 @@ declare module "@ducheved/neko-lucia" {
 }
 
 const session = lucia.createSession("user", { region: "us-east" });
+const legacyId: string = generateIdFromEntropySize(10);
 const adapterExports = [DrizzleMySQLAdapter, DrizzlePostgreSQLAdapter, DrizzleSQLiteAdapter];
 
 void session;
+void legacyId;
 void adapterExports;

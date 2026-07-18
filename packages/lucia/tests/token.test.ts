@@ -1,12 +1,50 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { generateIdFromEntropySize } from "../src/index.js";
 import {
 	createLegacySessionToken,
 	createSessionToken,
 	parseSessionToken,
 	verifySessionSecret
 } from "../src/token.js";
+
+test("matches the Lucia v3 Base32 output", (context) => {
+	context.mock.method(
+		globalThis.crypto,
+		"getRandomValues",
+		<ArrayType extends ArrayBufferView | null>(array: ArrayType): ArrayType => {
+			if (array instanceof Uint8Array) {
+				array.set([102, 111, 111]);
+			}
+			return array;
+		}
+	);
+	assert.equal(generateIdFromEntropySize(3), "mzxw6");
+});
+
+test("preserves the Lucia v3 entropy ID contract", () => {
+	for (const [size, length] of [
+		[0, 0],
+		[8, 13],
+		[10, 16],
+		[15, 24],
+		[25, 40]
+	]) {
+		const id = generateIdFromEntropySize(size);
+		assert.equal(id.length, length);
+		assert.match(id, /^[a-z2-7]*$/);
+		assert.equal(id.includes("="), false);
+	}
+	assert.equal(generateIdFromEntropySize(1.9).length, 2);
+	assert.equal(generateIdFromEntropySize(Number.NaN), "");
+	assert.throws(() => generateIdFromEntropySize(-1), RangeError);
+	assert.throws(() => generateIdFromEntropySize(Number.POSITIVE_INFINITY), RangeError);
+	assert.equal(generateIdFromEntropySize(65_536).length, 104_858);
+	assert.throws(() => generateIdFromEntropySize(65_537), {
+		name: "QuotaExceededError"
+	});
+});
 
 test("creates canonical v2 token material", () => {
 	const material = createSessionToken();

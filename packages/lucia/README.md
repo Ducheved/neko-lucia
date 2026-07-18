@@ -30,6 +30,10 @@ Deno imports the same package:
 import { Lucia } from "npm:@ducheved/neko-lucia";
 ```
 
+## Legacy IDs
+
+Moving a Lucia v3 app? `generateIdFromEntropySize(size)` is available from the package root. Pass the number of random bytes and it returns lowercase Base32 without padding, just like Lucia 3.2. Stick to a positive integer in app code.
+
 ## Token modes
 
 `sessionTokenVersion` picks the writer. The reader always understands both formats.

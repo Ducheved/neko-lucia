@@ -17,8 +17,6 @@
 
 `neko-lucia` is an independent, session-only fork of [Lucia v3](https://github.com/lucia-auth/lucia/tree/v3). It keeps the familiar server-side session flow, adds split-secret v2 tokens, and ships the same ESM packages to Node and Deno. Password hashing, OAuth, JWTs, and app-specific identity logic stay in your app where they belong.
 
-The release train starts at `0.1.0`. Current registry availability is shown by the npm badges above.
-
 | Package | Job |
 | --- | --- |
 | [`@ducheved/neko-lucia`](./packages/lucia) | Session lifecycle, strict token parsing, cookies, and typed attributes |
@@ -26,12 +24,11 @@ The release train starts at `0.1.0`. Current registry availability is shown by t
 
 ## What it supports
 
-- Node.js 22.23.1, 24.18.0, and 26.x plus Deno 2.9+ from the same npm tarballs; CI pins both LTS baselines, the Node 26.0.0 floor, and Deno 2.9.3
+- Node.js 22.23.1, 24.18.0, and 26.x plus Deno 2.9+
 - ESM only
 - zero core runtime dependencies
 - PostgreSQL 16 and 18, MySQL 8.4, and SQLite
 - stock Lucia v3 session migration without a forced global logout
-- strict TypeScript 7, Deno lint, and a CI ban on explicit `any`
 
 ## Install
 
@@ -73,6 +70,10 @@ const result = await lucia.validateSession(created.token);
 
 That is a guardrail, not a force field. Keep tokens out of logs, traces, analytics, and audit payloads.
 
+## User IDs
+
+Your app owns user IDs. `neko-lucia` never creates users; it accepts the `userId` passed to `createSession()`. Apps moving from Lucia v3 can keep their existing ID shape with `generateIdFromEntropySize(size)`, where `size` is the number of random bytes.
+
 ## Lucia v3 migration
 
 The reader accepts two exact formats:
@@ -101,34 +102,7 @@ Defaults are `HttpOnly`, `Secure`, `SameSite=Lax`, and `Path=/`. `HttpOnly` cann
 
 Fresh apps should use `__Host-auth_session`. The `auth_session` fallback exists only to keep a Lucia v3 rolling migration from kicking everybody out.
 
-## Release train
-
-The repository stores an `x.y.0` release floor. A successful `main` CI run counts first-parent commits since the commit that introduced that floor and publishes `x.y.patch`. CI builds once, tests the exact tarballs in Node and Deno, uploads an immutable artifact, and the separate `Publish` workflow sends those same bytes to npm with provenance. It never checks out or rebuilds release code.
-
-To start a minor line, manually change these four fields to the same next `x.y.0` value:
-
-- root `package.json` version
-- `packages/lucia/package.json` version
-- `packages/adapter-drizzle/package.json` version
-- the adapter's `@ducheved/neko-lucia` peer version
-
-That commit publishes `.0`. Each successfully tested `main` head publishes the patch matching its first-parent position. Failed runs and batched pushes can leave gaps. Publish jobs are serialized; if an older run finishes late, it gets the `backfill` tag instead of moving `latest` backward.
-
-For the one-time first publish, create a GitHub environment named `npm` and add `NPM_TOKEN` there. Once both packages exist on npm, configure each package's trusted publisher with owner `Ducheved`, repository `neko-lucia`, workflow `publish.yml`, and environment `npm`, then delete `NPM_TOKEN`. The workflow hard-fails if that bootstrap secret is still present after both package names exist, so later publishes cannot silently fall back from short-lived OIDC credentials.
-
-## Working on it
-
-```bash
-pnpm install --frozen-lockfile
-pnpm lint
-pnpm verify
-pnpm test:deno
-pnpm audit --prod
-```
-
-`pnpm-lock.yaml` is the only workspace lockfile. Generated `dist`, `.test-dist`, tarballs, artifacts, and accidental npm lockfiles stay out of Git.
-
-ESLint is deliberately on hold. The current stable `typescript-eslint` line does not support TypeScript 7, so a pretend-strict setup would buy noise instead of safety. Strict TypeScript, Deno lint, runtime contract tests, and the explicit-`any` gate are the rules for now.
+## Security
 
 Security reports go through [GitHub Security Advisories](https://github.com/Ducheved/neko-lucia/security/advisories/new). The short policy is in [SECURITY.md](./SECURITY.md).
 

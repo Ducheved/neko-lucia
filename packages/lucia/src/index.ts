@@ -1,4 +1,5 @@
 export { Lucia } from "./core.js";
+export { generateIdFromEntropySize } from "./token.js";
 export { TimeSpan } from "./date.js";
 export { Cookie } from "./cookie.js";
 export type { CookieAttributes } from "./cookie.js";

@@ -9,6 +9,10 @@ export type ParsedSessionToken =
 	| { id: string; tokenVersion: 1 }
 	| { id: string; secret: Uint8Array; tokenVersion: 2 };
 
+export function generateIdFromEntropySize(size: number): string {
+	return encodeBase32(globalThis.crypto.getRandomValues(new Uint8Array(size)));
+}
+
 export function createLegacySessionToken(sessionId?: string): string {
 	if (sessionId !== undefined) {
 		if (!legacyPattern.test(sessionId)) {

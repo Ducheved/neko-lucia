@@ -3,7 +3,7 @@ import {
 	DrizzlePostgreSQLAdapter,
 	DrizzleSQLiteAdapter
 } from "@ducheved/neko-lucia-adapter-drizzle";
-import { Lucia } from "@ducheved/neko-lucia";
+import { generateIdFromEntropySize, Lucia } from "@ducheved/neko-lucia";
 
 class MemoryAdapter {
 	constructor() {
@@ -51,6 +51,10 @@ class MemoryAdapter {
 	deleteExpiredSessions() {
 		return Promise.resolve();
 	}
+}
+
+if (!/^[a-z2-7]{16}$/.test(generateIdFromEntropySize(10))) {
+	throw new Error("legacy ID generation failed");
 }
 
 for (const sessionTokenVersion of [1, 2]) {

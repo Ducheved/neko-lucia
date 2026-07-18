@@ -1,4 +1,5 @@
 import type { Lucia, Session } from "../src/core.js";
+import { generateIdFromEntropySize } from "../src/index.js";
 
 type Equal<Left, Right> =
 	(<Value>() => Value extends Left ? 1 : 2) extends <Value>() =>
@@ -26,4 +27,8 @@ type UserMapperIsRequired = Assert<
 
 type SessionIdIsReadonly = Assert<
 	Equal<Pick<Session, "id">, { readonly id: string }>
+>;
+
+type EntropyIdGeneratorIsCompatible = Assert<
+	Equal<typeof generateIdFromEntropySize, (size: number) => string>
 >;
