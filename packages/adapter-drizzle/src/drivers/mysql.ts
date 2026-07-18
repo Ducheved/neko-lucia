@@ -9,7 +9,7 @@ import type {
 	AnyMySqlTable,
 	MySqlDatabase,
 	MySqlQueryResultHKT,
-	PreparedQueryHKTBase
+	PreparedQueryHKTBase,
 } from "drizzle-orm/mysql-core";
 
 export class DrizzleMySQLAdapter<
@@ -18,7 +18,7 @@ export class DrizzleMySQLAdapter<
 	TFullSchema extends Record<string, unknown> = Record<string, never>,
 	TSchema extends TablesRelationalConfig = TablesRelationalConfig,
 	TSessionTable extends MySQLSessionTable = MySQLSessionTable,
-	TUserTable extends MySQLUserTable = MySQLUserTable
+	TUserTable extends MySQLUserTable = MySQLUserTable,
 > implements Adapter {
 	private db: MySqlDatabase<TQueryResult, TPreparedQuery, TFullSchema, TSchema>;
 	private sessionTable: TSessionTable;
@@ -33,7 +33,7 @@ export class DrizzleMySQLAdapter<
 	constructor(
 		db: MySqlDatabase<TQueryResult, TPreparedQuery, TFullSchema, TSchema>,
 		sessionTable: TSessionTable,
-		userTable: TUserTable
+		userTable: TUserTable,
 	) {
 		this.db = db;
 		this.sessionTable = sessionTable;
@@ -49,31 +49,25 @@ export class DrizzleMySQLAdapter<
 	}
 
 	public async getSessionAndUser(
-		sessionId: string
+		sessionId: string,
 	): Promise<[session: DatabaseSession | null, user: DatabaseUser | null]> {
 		const result = await this.db
 			.select({
 				user: this.queryUserTable,
-				session: this.querySessionTable
+				session: this.querySessionTable,
 			})
 			.from(this.querySessionTable)
-			.leftJoin(
-				this.queryUserTable,
-				eq(this.querySessionTable.userId, this.queryUserTable.id)
-			)
+			.leftJoin(this.queryUserTable, eq(this.querySessionTable.userId, this.queryUserTable.id))
 			.where(eq(this.querySessionTable.id, sessionId));
 		if (result.length !== 1 || result[0].session === null) return [null, null];
 		return [
 			transformIntoDatabaseSession(result[0].session),
-			result[0].user === null ? null : transformIntoDatabaseUser(result[0].user)
+			result[0].user === null ? null : transformIntoDatabaseUser(result[0].user),
 		];
 	}
 
 	public async getUserSessions(userId: UserId): Promise<DatabaseSession[]> {
-		const result = await this.db
-			.select()
-			.from(this.querySessionTable)
-			.where(eq(this.querySessionTable.userId, userId));
+		const result = await this.db.select().from(this.querySessionTable).where(eq(this.querySessionTable.userId, userId));
 		return result.map(transformIntoDatabaseSession);
 	}
 
@@ -84,7 +78,7 @@ export class DrizzleMySQLAdapter<
 			userId: session.userId,
 			expiresAt: session.expiresAt,
 			secretHash: serializeSecretHash(session.tokenVersion, session.secretHash),
-			tokenVersion: session.tokenVersion
+			tokenVersion: session.tokenVersion,
 		} as MySQLSessionTable["$inferInsert"];
 		await this.db.insert(this.querySessionTable).values(values);
 	}
@@ -97,9 +91,7 @@ export class DrizzleMySQLAdapter<
 	}
 
 	public async deleteExpiredSessions(): Promise<void> {
-		await this.db
-			.delete(this.querySessionTable)
-			.where(lte(this.querySessionTable.expiresAt, new Date()));
+		await this.db.delete(this.querySessionTable).where(lte(this.querySessionTable.expiresAt, new Date()));
 	}
 }
 
@@ -131,7 +123,7 @@ function transformIntoDatabaseSession(raw: Record<string, unknown>): DatabaseSes
 		id,
 		userId: userId as UserId,
 		expiresAt,
-		attributes: attributes as DatabaseSession["attributes"]
+		attributes: attributes as DatabaseSession["attributes"],
 	};
 	if (tokenVersion === 1 && secretHash === null) {
 		return { ...base, tokenVersion: 1, secretHash: null };

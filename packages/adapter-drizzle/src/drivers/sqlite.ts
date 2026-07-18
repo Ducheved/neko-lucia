@@ -4,11 +4,7 @@ import { normalizeSecretHash, serializeSecretHash } from "../secret.js";
 
 import type { Adapter, DatabaseSession, DatabaseUser, UserId } from "@ducheved/neko-lucia";
 import type { TablesRelationalConfig } from "drizzle-orm/relations";
-import type {
-	AnySQLiteColumn,
-	AnySQLiteTable,
-	BaseSQLiteDatabase
-} from "drizzle-orm/sqlite-core";
+import type { AnySQLiteColumn, AnySQLiteTable, BaseSQLiteDatabase } from "drizzle-orm/sqlite-core";
 
 export class DrizzleSQLiteAdapter<
 	TResultKind extends "async" | "sync" = "async" | "sync",
@@ -16,7 +12,7 @@ export class DrizzleSQLiteAdapter<
 	TFullSchema extends Record<string, unknown> = Record<string, never>,
 	TSchema extends TablesRelationalConfig = TablesRelationalConfig,
 	TSessionTable extends SQLiteSessionTable = SQLiteSessionTable,
-	TUserTable extends SQLiteUserTable = SQLiteUserTable
+	TUserTable extends SQLiteUserTable = SQLiteUserTable,
 > implements Adapter {
 	private db: BaseSQLiteDatabase<TResultKind, TRunResult, TFullSchema, TSchema>;
 	private sessionTable: TSessionTable;
@@ -31,7 +27,7 @@ export class DrizzleSQLiteAdapter<
 	constructor(
 		db: BaseSQLiteDatabase<TResultKind, TRunResult, TFullSchema, TSchema>,
 		sessionTable: TSessionTable,
-		userTable: TUserTable
+		userTable: TUserTable,
 	) {
 		this.db = db;
 		this.sessionTable = sessionTable;
@@ -47,19 +43,16 @@ export class DrizzleSQLiteAdapter<
 	}
 
 	public async getSessionAndUser(
-		sessionId: string
+		sessionId: string,
 	): Promise<[session: DatabaseSession | null, user: DatabaseUser | null]> {
 		const result: unknown = await this.db
 			.select({
 				user: this.queryUserTable,
-				session: this.querySessionTable
+				session: this.querySessionTable,
 			})
 			.from(this.querySessionTable)
 			.where(eq(this.querySessionTable.id, sessionId))
-			.leftJoin(
-				this.queryUserTable,
-				eq(this.querySessionTable.userId, this.queryUserTable.id)
-			);
+			.leftJoin(this.queryUserTable, eq(this.querySessionTable.userId, this.queryUserTable.id));
 		if (Array.isArray(result) === false || result.length !== 1 || !isRecord(result[0])) {
 			return [null, null];
 		}
@@ -68,10 +61,7 @@ export class DrizzleSQLiteAdapter<
 		if (!isRecord(session) || (user !== null && !isRecord(user))) {
 			return [null, null];
 		}
-		return [
-			transformIntoDatabaseSession(session),
-			user === null ? null : transformIntoDatabaseUser(user)
-		];
+		return [transformIntoDatabaseSession(session), user === null ? null : transformIntoDatabaseUser(user)];
 	}
 
 	public async getUserSessions(userId: UserId): Promise<DatabaseSession[]> {
@@ -90,19 +80,16 @@ export class DrizzleSQLiteAdapter<
 			userId: session.userId,
 			expiresAt: Math.floor(session.expiresAt.getTime() / 1000),
 			secretHash: serializeSecretHash(session.tokenVersion, session.secretHash),
-			tokenVersion: session.tokenVersion
+			tokenVersion: session.tokenVersion,
 		} as SQLiteSessionTable["$inferInsert"];
-		await this.db
-			.insert(this.querySessionTable)
-			.values(values)
-			.run();
+		await this.db.insert(this.querySessionTable).values(values).run();
 	}
 
 	public async updateSessionExpiration(sessionId: string, expiresAt: Date): Promise<void> {
 		await this.db
 			.update(this.querySessionTable)
 			.set({
-				expiresAt: Math.floor(expiresAt.getTime() / 1000)
+				expiresAt: Math.floor(expiresAt.getTime() / 1000),
 			} as Partial<SQLiteSessionTable["$inferInsert"]>)
 			.where(eq(this.querySessionTable.id, sessionId))
 			.run();
@@ -149,7 +136,7 @@ function transformIntoDatabaseSession(raw: Record<string, unknown>): DatabaseSes
 		id,
 		userId: userId as UserId,
 		expiresAt: new Date(expiresAt * 1000),
-		attributes: attributes as DatabaseSession["attributes"]
+		attributes: attributes as DatabaseSession["attributes"],
 	};
 	if (tokenVersion === 1 && secretHash === null) {
 		return { ...base, tokenVersion: 1, secretHash: null };

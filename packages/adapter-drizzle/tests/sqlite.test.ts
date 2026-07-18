@@ -7,17 +7,12 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import { DrizzleSQLiteAdapter } from "../src/drivers/sqlite.js";
-import {
-	createV2Record,
-	runAdapterContract,
-	runOrphanContract,
-	runVersionMismatchContract
-} from "./contract.js";
+import { createV2Record, runAdapterContract, runOrphanContract, runVersionMismatchContract } from "./contract.js";
 import "./register.js";
 
 const userTable = sqliteTable("user", {
 	id: text("id").primaryKey(),
-	username: text("username").notNull().unique()
+	username: text("username").notNull().unique(),
 });
 
 const sessionTable = sqliteTable("session", {
@@ -28,7 +23,7 @@ const sessionTable = sqliteTable("session", {
 	expiresAt: integer("expires_at").notNull(),
 	secretHash: blob("secret_hash", { mode: "buffer" }),
 	tokenVersion: integer("token_version").notNull().default(1),
-	country: text("country").notNull()
+	country: text("country").notNull(),
 });
 
 test("SQLite expand migration, rebuild and adapter contract", async () => {
@@ -81,22 +76,17 @@ test("SQLite expand migration, rebuild and adapter contract", async () => {
 	assert.deepEqual(sqlite.pragma("foreign_key_check"), []);
 	const adapter = new DrizzleSQLiteAdapter(drizzle(sqlite), sessionTable, userTable);
 	const rollbackReader = new Lucia(adapter, { sessionTokenVersion: 1 });
-	assert.equal(
-		(await rollbackReader.validateSession("a".repeat(40))).session?.id,
-		"a".repeat(40)
-	);
+	assert.equal((await rollbackReader.validateSession("a".repeat(40))).session?.id, "a".repeat(40));
 	assert.throws(() =>
 		sqlite
 			.prepare(
-				"INSERT INTO session (id, user_id, expires_at, country, token_version, secret_hash) VALUES ('invalid-pair', 'user', unixepoch() + 86400, 'invalid', 2, NULL)"
+				"INSERT INTO session (id, user_id, expires_at, country, token_version, secret_hash) VALUES ('invalid-pair', 'user', unixepoch() + 86400, 'invalid', 2, NULL)",
 			)
-			.run()
+			.run(),
 	);
 	await adapter.deleteSession("a".repeat(40));
 	await runVersionMismatchContract(adapter, async (sessionId) => {
-		sqlite
-			.prepare("UPDATE session SET token_version = 1, secret_hash = NULL WHERE id = ?")
-			.run(sessionId);
+		sqlite.prepare("UPDATE session SET token_version = 1, secret_hash = NULL WHERE id = ?").run(sessionId);
 	});
 	await runAdapterContract(adapter);
 	await runOrphanContract(adapter, async () => {
@@ -123,7 +113,7 @@ test("SQLite preserves every hash byte", async () => {
 	`);
 	const adapter = new DrizzleSQLiteAdapter(drizzle(sqlite), sessionTable, userTable);
 	const vectors = Array.from({ length: 8 }, (_, group) =>
-		Uint8Array.from({ length: 32 }, (_, index) => group * 32 + index)
+		Uint8Array.from({ length: 32 }, (_, index) => group * 32 + index),
 	);
 	for (const vector of vectors) {
 		await adapter.setSession(createV2Record(vector));

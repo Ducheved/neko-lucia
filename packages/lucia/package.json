@@ -22,7 +22,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "prepack": "pnpm --dir ../.. lint && pnpm run typecheck && pnpm run test && pnpm run build",
+    "prepack": "pnpm --dir ../.. format && pnpm --dir ../.. lint && pnpm run typecheck && pnpm run test && pnpm run build",
     "test": "tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -56,6 +56,6 @@
   },
   "devDependencies": {
     "@types/node": "22.20.1",
-    "typescript": "7.0.2"
+    "typescript": "6.0.3"
   }
 }

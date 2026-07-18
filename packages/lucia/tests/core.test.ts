@@ -13,9 +13,7 @@ class MemoryAdapter implements Adapter {
 	public deletes = 0;
 	public expirationUpdates = 0;
 
-	public async getSessionAndUser(
-		sessionId: string
-	): Promise<[DatabaseSession | null, DatabaseUser | null]> {
+	public async getSessionAndUser(sessionId: string): Promise<[DatabaseSession | null, DatabaseUser | null]> {
 		this.reads++;
 		const session = this.sessions.get(sessionId) ?? null;
 		const user = session === null ? null : (this.users.get(String(session.userId)) ?? null);
@@ -64,7 +62,7 @@ function createAdapter(): MemoryAdapter {
 	const adapter = new MemoryAdapter();
 	adapter.users.set("user", {
 		id: "user",
-		attributes: {}
+		attributes: {},
 	});
 	return adapter;
 }
@@ -82,7 +80,7 @@ test("creates legacy sessions only when v1 is explicit", async () => {
 		configurable: false,
 		enumerable: false,
 		value: created.id,
-		writable: false
+		writable: false,
 	});
 	assert.equal(JSON.stringify(created).includes(created.token), false);
 	const result = await lucia.validateSession(created.token);
@@ -99,7 +97,7 @@ test("requires an exact token writer mode at runtime", () => {
 		{ sessionTokenVersion: undefined },
 		{ sessionTokenVersion: 0 },
 		{ sessionTokenVersion: 3 },
-		{ sessionTokenVersion: "2" }
+		{ sessionTokenVersion: "2" },
 	]) {
 		assert.throws(() => Reflect.construct(Lucia, [adapter, options]), TypeError);
 	}
@@ -160,7 +158,7 @@ test("version mismatch is non-destructive", async () => {
 	const mismatched = {
 		...original,
 		tokenVersion: 1,
-		secretHash: null
+		secretHash: null,
 	} as DatabaseSession;
 	adapter.sessions.set(created.id, mismatched);
 	assert.deepEqual(await lucia.validateSession(created.token), { session: null, user: null });
@@ -200,7 +198,7 @@ test("refresh preserves half-life write frequency", async () => {
 	const adapter = createAdapter();
 	const lucia = new Lucia(adapter, {
 		sessionExpiresIn: new TimeSpan(100, "ms"),
-		sessionTokenVersion: 2
+		sessionTokenVersion: 2,
 	});
 	const created = await lucia.createSession("user", {});
 	const stored = adapter.sessions.get(created.id);
@@ -241,26 +239,11 @@ test("cookie parser rejects only duplicate target names", async () => {
 	const lucia = new Lucia(adapter, { sessionTokenVersion: 2 });
 	const first = await lucia.createSession("user", {});
 	const second = await lucia.createSession("user", {});
-	assert.equal(
-		lucia.readSessionCookie(`auth_session=${first.token}; auth_session=${second.token}`),
-		null
-	);
-	assert.equal(
-		lucia.readSessionCookie(`auth_session=${first.token}; auth_session=${first.token}`),
-		null
-	);
-	assert.equal(
-		lucia.readSessionCookie(`auth_session=${first.token}; %61uth_session=${second.token}`),
-		null
-	);
-	assert.equal(
-		lucia.readSessionCookie(`other=a; other=b; auth_session=${first.token}`),
-		first.token
-	);
-	assert.equal(
-		lucia.readSessionCookie(`broken%=x; auth_session=${first.token}`),
-		first.token
-	);
+	assert.equal(lucia.readSessionCookie(`auth_session=${first.token}; auth_session=${second.token}`), null);
+	assert.equal(lucia.readSessionCookie(`auth_session=${first.token}; auth_session=${first.token}`), null);
+	assert.equal(lucia.readSessionCookie(`auth_session=${first.token}; %61uth_session=${second.token}`), null);
+	assert.equal(lucia.readSessionCookie(`other=a; other=b; auth_session=${first.token}`), first.token);
+	assert.equal(lucia.readSessionCookie(`broken%=x; auth_session=${first.token}`), first.token);
 });
 
 test("cookie configuration enforces the runtime boundary", () => {
@@ -271,9 +254,9 @@ test("cookie configuration enforces the runtime boundary", () => {
 		() =>
 			new Lucia(adapter, {
 				sessionTokenVersion: 2,
-				sessionCookie: { attributes: { sameSite: "none", secure: false } }
+				sessionCookie: { attributes: { sameSite: "none", secure: false } },
 			}),
-		TypeError
+		TypeError,
 	);
 	assert.throws(
 		() =>
@@ -281,10 +264,10 @@ test("cookie configuration enforces the runtime boundary", () => {
 				sessionTokenVersion: 2,
 				sessionCookie: {
 					name: "__Host-session",
-					attributes: { domain: "example.com" }
-				}
+					attributes: { domain: "example.com" },
+				},
 			}),
-		TypeError
+		TypeError,
 	);
 	assert.throws(
 		() =>
@@ -292,10 +275,10 @@ test("cookie configuration enforces the runtime boundary", () => {
 				sessionTokenVersion: 2,
 				sessionCookie: {
 					name: "__Secure-session",
-					attributes: { secure: false }
-				}
+					attributes: { secure: false },
+				},
 			}),
-		TypeError
+		TypeError,
 	);
 	for (const invalid of [
 		{ name: "" },
@@ -308,7 +291,7 @@ test("cookie configuration enforces the runtime boundary", () => {
 		{ attributes: { sameSite: "invalid" } },
 		{ attributes: { path: "relative" } },
 		{ attributes: { path: "/bad;path" } },
-		{ attributes: { domain: "bad domain" } }
+		{ attributes: { domain: "bad domain" } },
 	]) {
 		assert.throws(() => construct(invalid), TypeError);
 	}
@@ -319,8 +302,8 @@ test("cookie configuration enforces the runtime boundary", () => {
 		attributes: {
 			httpOnly: false,
 			maxAge: 1,
-			expires: new Date(0)
-		}
+			expires: new Date(0),
+		},
 	});
 	const hardenedCookie = hardened.createBlankSessionCookie();
 	assert.equal(hardenedCookie.attributes.httpOnly, true);
@@ -329,13 +312,13 @@ test("cookie configuration enforces the runtime boundary", () => {
 		sessionTokenVersion: 2,
 		sessionCookie: {
 			name: "auth_session",
-			attributes: { secure: false }
-		}
+			attributes: { secure: false },
+		},
 	});
 	assert.equal(local.createBlankSessionCookie().attributes.secure, false);
 	const named = new Lucia(adapter, {
 		sessionTokenVersion: 2,
-		sessionCookie: { name: "__Host-auth_session" }
+		sessionCookie: { name: "__Host-auth_session" },
 	});
 	assert.equal(named.sessionCookieName, "__Host-auth_session");
 	assert.equal(named.createBlankSessionCookie().serialize().startsWith("__Host-auth_session="), true);

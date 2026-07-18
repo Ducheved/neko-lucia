@@ -73,7 +73,7 @@ export class CookieController {
 		baseCookieAttributes: CookieAttributes,
 		cookieOptions?: {
 			expiresIn?: TimeSpan;
-		}
+		},
 	) {
 		this.cookieName = cookieName;
 		this.cookieExpiresIn = cookieOptions?.expiresIn ?? null;
@@ -88,14 +88,14 @@ export class CookieController {
 	public createCookie(value: string): Cookie {
 		return new Cookie(this.cookieName, value, {
 			...this.baseCookieAttributes,
-			maxAge: this.cookieExpiresIn?.seconds()
+			maxAge: this.cookieExpiresIn?.seconds(),
 		});
 	}
 
 	public createBlankCookie(): Cookie {
 		return new Cookie(this.cookieName, "", {
 			...this.baseCookieAttributes,
-			maxAge: 0
+			maxAge: 0,
 		});
 	}
 

@@ -1,13 +1,7 @@
-import type {
-	RegisteredDatabaseSessionAttributes,
-	RegisteredDatabaseUserAttributes,
-	UserId
-} from "./index.js";
+import type { RegisteredDatabaseSessionAttributes, RegisteredDatabaseUserAttributes, UserId } from "./index.js";
 
 export interface Adapter {
-	getSessionAndUser(
-		sessionId: string
-	): Promise<[session: DatabaseSession | null, user: DatabaseUser | null]>;
+	getSessionAndUser(sessionId: string): Promise<[session: DatabaseSession | null, user: DatabaseUser | null]>;
 	getUserSessions(userId: UserId): Promise<DatabaseSession[]>;
 	setSession(session: DatabaseSession): Promise<void>;
 	updateSessionExpiration(sessionId: string, expiresAt: Date): Promise<void>;

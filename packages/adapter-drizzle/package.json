@@ -22,7 +22,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "prepack": "pnpm --dir ../.. lint && pnpm run typecheck && pnpm run test && pnpm run build",
+    "prepack": "pnpm --dir ../.. format && pnpm --dir ../.. lint && pnpm run typecheck && pnpm run test && pnpm run build",
     "test": "tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -68,6 +68,6 @@
     "drizzle-orm": "0.45.2",
     "mysql2": "3.23.0",
     "pg": "8.22.0",
-    "typescript": "7.0.2"
+    "typescript": "6.0.3"
   }
 }

@@ -1,11 +1,6 @@
 import { CookieController } from "./cookie.js";
 import { TimeSpan, createDate, isWithinExpirationDate } from "./date.js";
-import {
-	createLegacySessionToken,
-	createSessionToken,
-	parseSessionToken,
-	verifySessionSecret
-} from "./token.js";
+import { createLegacySessionToken, createSessionToken, parseSessionToken, verifySessionSecret } from "./token.js";
 
 import type { Cookie, CookieAttributes } from "./cookie.js";
 import type { Adapter, DatabaseSession } from "./database.js";
@@ -13,24 +8,20 @@ import type {
 	RegisteredDatabaseSessionAttributes,
 	RegisteredDatabaseUserAttributes,
 	RegisteredLucia,
-	UserId
+	UserId,
 } from "./index.js";
 
 type EmptyAttributes = Record<never, never>;
 
-type SessionAttributes = RegisteredLucia extends Lucia<
-	infer _SessionAttributes extends object,
-	infer _UserAttributes extends object
->
-	? _SessionAttributes
-	: EmptyAttributes;
+type SessionAttributes =
+	RegisteredLucia extends Lucia<infer _SessionAttributes extends object, infer _UserAttributes extends object>
+		? _SessionAttributes
+		: EmptyAttributes;
 
-type UserAttributes = RegisteredLucia extends Lucia<
-	infer _SessionAttributes extends object,
-	infer _UserAttributes extends object
->
-	? _UserAttributes
-	: EmptyAttributes;
+type UserAttributes =
+	RegisteredLucia extends Lucia<infer _SessionAttributes extends object, infer _UserAttributes extends object>
+		? _UserAttributes
+		: EmptyAttributes;
 
 export interface Session extends SessionAttributes {
 	readonly id: string;
@@ -47,62 +38,45 @@ export interface User extends UserAttributes {
 	id: UserId;
 }
 
-type SessionMapperOption<_SessionAttributes extends object> =
-	keyof _SessionAttributes extends never
-		? {
-				getSessionAttributes?: (
-					databaseSessionAttributes: RegisteredDatabaseSessionAttributes
-				) => _SessionAttributes;
-			}
-		: {
-				getSessionAttributes: (
-					databaseSessionAttributes: RegisteredDatabaseSessionAttributes
-				) => _SessionAttributes;
-			};
+type SessionMapperOption<_SessionAttributes extends object> = keyof _SessionAttributes extends never
+	? {
+			getSessionAttributes?: (databaseSessionAttributes: RegisteredDatabaseSessionAttributes) => _SessionAttributes;
+		}
+	: {
+			getSessionAttributes: (databaseSessionAttributes: RegisteredDatabaseSessionAttributes) => _SessionAttributes;
+		};
 
 type UserMapperOption<_UserAttributes extends object> = keyof _UserAttributes extends never
 	? {
-			getUserAttributes?: (
-				databaseUserAttributes: RegisteredDatabaseUserAttributes
-			) => _UserAttributes;
+			getUserAttributes?: (databaseUserAttributes: RegisteredDatabaseUserAttributes) => _UserAttributes;
 		}
 	: {
-			getUserAttributes: (
-				databaseUserAttributes: RegisteredDatabaseUserAttributes
-			) => _UserAttributes;
+			getUserAttributes: (databaseUserAttributes: RegisteredDatabaseUserAttributes) => _UserAttributes;
 		};
 
 type LuciaOptions<_SessionAttributes extends object, _UserAttributes extends object> = {
 	sessionExpiresIn?: TimeSpan;
 	sessionTokenVersion: 1 | 2;
 	sessionCookie?: SessionCookieOptions;
-} &
-	SessionMapperOption<_SessionAttributes> &
+} & SessionMapperOption<_SessionAttributes> &
 	UserMapperOption<_UserAttributes>;
 
 export class Lucia<
 	_SessionAttributes extends object = EmptyAttributes,
-	_UserAttributes extends object = EmptyAttributes
+	_UserAttributes extends object = EmptyAttributes,
 > {
 	private adapter: Adapter;
 	private sessionExpiresIn: TimeSpan;
 	private sessionCookieController: CookieController;
 	private sessionTokenVersion: 1 | 2;
 
-	private getSessionAttributes: (
-		databaseSessionAttributes: RegisteredDatabaseSessionAttributes
-	) => _SessionAttributes;
+	private getSessionAttributes: (databaseSessionAttributes: RegisteredDatabaseSessionAttributes) => _SessionAttributes;
 
-	private getUserAttributes: (
-		databaseUserAttributes: RegisteredDatabaseUserAttributes
-	) => _UserAttributes;
+	private getUserAttributes: (databaseUserAttributes: RegisteredDatabaseUserAttributes) => _UserAttributes;
 
 	public readonly sessionCookieName: string;
 
-	constructor(
-		adapter: Adapter,
-		options: LuciaOptions<_SessionAttributes, _UserAttributes>
-	) {
+	constructor(adapter: Adapter, options: LuciaOptions<_SessionAttributes, _UserAttributes>) {
 		if (
 			!isPlainRecord(options) ||
 			!Object.hasOwn(options, "sessionTokenVersion") ||
@@ -133,13 +107,9 @@ export class Lucia<
 		}
 		const baseSessionCookieAttributes = cookieConfiguration.attributes;
 		validateCookieConfiguration(this.sessionCookieName, baseSessionCookieAttributes);
-		this.sessionCookieController = new CookieController(
-			this.sessionCookieName,
-			baseSessionCookieAttributes,
-			{
-				expiresIn: sessionCookieExpiresIn
-			}
-		);
+		this.sessionCookieController = new CookieController(this.sessionCookieName, baseSessionCookieAttributes, {
+			expiresIn: sessionCookieExpiresIn,
+		});
 	}
 
 	public async getUserSessions(userId: UserId): Promise<Session[]> {
@@ -155,7 +125,7 @@ export class Lucia<
 	}
 
 	public async validateSession(
-		token: string
+		token: string,
 	): Promise<{ user: User; session: Session } | { user: null; session: null }> {
 		const parsedToken = parseSessionToken(token);
 		if (parsedToken === null) {
@@ -177,7 +147,7 @@ export class Lucia<
 			return { session: null, user: null };
 		}
 		const activePeriodExpirationDate = new Date(
-			databaseSession.expiresAt.getTime() - this.sessionExpiresIn.milliseconds() / 2
+			databaseSession.expiresAt.getTime() - this.sessionExpiresIn.milliseconds() / 2,
 		);
 		const session = this.transformSession(databaseSession, false);
 		if (!isWithinExpirationDate(activePeriodExpirationDate)) {
@@ -187,7 +157,7 @@ export class Lucia<
 		}
 		const user: User = {
 			...this.getUserAttributes(databaseUser.attributes),
-			id: databaseUser.id
+			id: databaseUser.id,
 		};
 		return { user, session };
 	}
@@ -197,7 +167,7 @@ export class Lucia<
 		attributes: RegisteredDatabaseSessionAttributes,
 		options?: {
 			sessionId?: string;
-		}
+		},
 	): Promise<SessionWithToken> {
 		const sessionExpiresAt = createDate(this.sessionExpiresIn);
 		let databaseSession: DatabaseSession;
@@ -210,7 +180,7 @@ export class Lucia<
 				expiresAt: sessionExpiresAt,
 				attributes,
 				tokenVersion: 1,
-				secretHash: null
+				secretHash: null,
 			};
 		} else {
 			const material = createSessionToken(options?.sessionId);
@@ -221,7 +191,7 @@ export class Lucia<
 				expiresAt: sessionExpiresAt,
 				attributes,
 				tokenVersion: 2,
-				secretHash: material.secretHash
+				secretHash: material.secretHash,
 			};
 		}
 		await this.adapter.setSession(databaseSession);
@@ -230,7 +200,7 @@ export class Lucia<
 			configurable: false,
 			enumerable: false,
 			value: token,
-			writable: false
+			writable: false,
 		});
 		return session;
 	}
@@ -280,13 +250,13 @@ export class Lucia<
 			id: databaseSession.id,
 			userId: databaseSession.userId,
 			fresh,
-			expiresAt: databaseSession.expiresAt
+			expiresAt: databaseSession.expiresAt,
 		};
 		Object.defineProperty(session, "id", {
 			configurable: false,
 			enumerable: false,
 			value: databaseSession.id,
-			writable: false
+			writable: false,
 		});
 		return session;
 	}
@@ -307,7 +277,7 @@ export interface SessionCookieAttributesOptions {
 
 function authenticateSession(
 	session: DatabaseSession,
-	parsedToken: NonNullable<ReturnType<typeof parseSessionToken>>
+	parsedToken: NonNullable<ReturnType<typeof parseSessionToken>>,
 ): boolean {
 	if (parsedToken.tokenVersion === 1) {
 		return session.tokenVersion === 1 && session.secretHash === null;
@@ -336,7 +306,8 @@ function validateCookieConfiguration(name: string, attributes: CookieAttributes)
 
 const cookieNamePattern = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 const cookiePathPattern = /^\/[^;]*$/;
-const cookieDomainPattern = /^\.?(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(?:\.(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$/;
+const cookieDomainPattern =
+	/^\.?(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(?:\.(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$/;
 
 function normalizeCookieConfiguration(options: SessionCookieOptions | undefined): {
 	name: string;
@@ -349,11 +320,7 @@ function normalizeCookieConfiguration(options: SessionCookieOptions | undefined)
 	const record = options ?? {};
 	const nameValue = getOwn(record, "name");
 	const name = nameValue === undefined ? "auth_session" : nameValue;
-	if (
-		typeof name !== "string" ||
-		!cookieNamePattern.test(name) ||
-		encodeURIComponent(name) !== name
-	) {
+	if (typeof name !== "string" || !cookieNamePattern.test(name) || encodeURIComponent(name) !== name) {
 		throw new TypeError("Invalid session cookie name");
 	}
 	const expiresValue = getOwn(record, "expires");
@@ -381,17 +348,12 @@ function normalizeCookieConfiguration(options: SessionCookieOptions | undefined)
 	const pathValue = getOwn(attributesRecord, "path");
 	if (
 		pathValue !== undefined &&
-		(typeof pathValue !== "string" ||
-			!cookiePathPattern.test(pathValue) ||
-			containsControlCharacter(pathValue))
+		(typeof pathValue !== "string" || !cookiePathPattern.test(pathValue) || containsControlCharacter(pathValue))
 	) {
 		throw new TypeError("Invalid Path attribute");
 	}
 	const domainValue = getOwn(attributesRecord, "domain");
-	if (
-		domainValue !== undefined &&
-		(typeof domainValue !== "string" || !cookieDomainPattern.test(domainValue))
-	) {
+	if (domainValue !== undefined && (typeof domainValue !== "string" || !cookieDomainPattern.test(domainValue))) {
 		throw new TypeError("Invalid Domain attribute");
 	}
 	return {
@@ -402,8 +364,8 @@ function normalizeCookieConfiguration(options: SessionCookieOptions | undefined)
 			secure: secureValue ?? true,
 			sameSite: sameSiteValue ?? "lax",
 			path: pathValue ?? "/",
-			...(domainValue === undefined ? {} : { domain: domainValue })
-		}
+			...(domainValue === undefined ? {} : { domain: domainValue }),
+		},
 	};
 }
 
@@ -415,7 +377,7 @@ function isPlainRecord(value: unknown): value is Record<PropertyKey, unknown> {
 	if (value === null || typeof value !== "object") {
 		return false;
 	}
-	const prototype = Object.getPrototypeOf(value);
+	const prototype: unknown = Object.getPrototypeOf(value);
 	return prototype === Object.prototype || prototype === null;
 }
 

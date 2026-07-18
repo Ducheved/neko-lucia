@@ -7,11 +7,11 @@ import type { Adapter, DatabaseSession } from "@ducheved/neko-lucia";
 export async function runAdapterContract(adapter: Adapter): Promise<void> {
 	const legacyLucia = new Lucia(adapter, {
 		sessionExpiresIn: new TimeSpan(1, "d"),
-		sessionTokenVersion: 1
+		sessionTokenVersion: 1,
 	});
 	const v2Lucia = new Lucia(adapter, {
 		sessionExpiresIn: new TimeSpan(1, "d"),
-		sessionTokenVersion: 2
+		sessionTokenVersion: 2,
 	});
 	const legacy = await legacyLucia.createSession("user", { country: "legacy" });
 	const v2 = await v2Lucia.createSession("user", { country: "v2" });
@@ -45,10 +45,10 @@ export async function runAdapterContract(adapter: Adapter): Promise<void> {
 			country: "override",
 			id: "attribute-id",
 			secretHash: null,
-			tokenVersion: 1
+			tokenVersion: 1,
 		} as { country: string },
 		tokenVersion: 2,
-		secretHash: overrideHash
+		secretHash: overrideHash,
 	});
 	const [precedence] = await adapter.getSessionAndUser("system-precedence");
 	assert.equal(precedence?.id, "system-precedence");
@@ -62,7 +62,7 @@ export async function runAdapterContract(adapter: Adapter): Promise<void> {
 			expiresAt: new Date(Date.now() + 60_000),
 			attributes: { country: "invalid" },
 			tokenVersion: 2,
-			secretHash: new Uint8Array(31)
+			secretHash: new Uint8Array(31),
 		},
 		{
 			id: "invalid-legacy-hash",
@@ -70,7 +70,7 @@ export async function runAdapterContract(adapter: Adapter): Promise<void> {
 			expiresAt: new Date(Date.now() + 60_000),
 			attributes: { country: "invalid" },
 			tokenVersion: 1,
-			secretHash: new Uint8Array(32)
+			secretHash: new Uint8Array(32),
 		},
 		{
 			id: "invalid-version",
@@ -78,14 +78,11 @@ export async function runAdapterContract(adapter: Adapter): Promise<void> {
 			expiresAt: new Date(Date.now() + 60_000),
 			attributes: { country: "invalid" },
 			tokenVersion: 3,
-			secretHash: null
-		}
+			secretHash: null,
+		},
 	];
 	for (const invalid of invalidRecords) {
-		await assert.rejects(
-			adapter.setSession(invalid as unknown as DatabaseSession),
-			TypeError
-		);
+		await assert.rejects(adapter.setSession(invalid as unknown as DatabaseSession), TypeError);
 		assert.deepEqual(await adapter.getSessionAndUser(invalid.id), [null, null]);
 	}
 	const sessions = await adapter.getUserSessions("user");
@@ -101,7 +98,7 @@ export async function runAdapterContract(adapter: Adapter): Promise<void> {
 
 export async function runVersionMismatchContract(
 	adapter: Adapter,
-	mutateToLegacy: (sessionId: string) => Promise<void>
+	mutateToLegacy: (sessionId: string) => Promise<void>,
 ): Promise<void> {
 	const lucia = new Lucia(adapter, { sessionTokenVersion: 2 });
 	const created = await lucia.createSession("user", { country: "mismatch" });
@@ -114,10 +111,7 @@ export async function runVersionMismatchContract(
 	await adapter.deleteSession(created.id);
 }
 
-export async function runOrphanContract(
-	adapter: Adapter,
-	removeUser: () => Promise<void>
-): Promise<void> {
+export async function runOrphanContract(adapter: Adapter, removeUser: () => Promise<void>): Promise<void> {
 	const lucia = new Lucia(adapter, { sessionTokenVersion: 2 });
 	const created = await lucia.createSession("user", { country: "orphan" });
 	await removeUser();
@@ -138,6 +132,6 @@ export function createV2Record(secretHash: Uint8Array): DatabaseSession {
 		expiresAt: new Date(Date.now() + 60_000),
 		attributes: { country: "binary" },
 		tokenVersion: 2,
-		secretHash
+		secretHash,
 	};
 }

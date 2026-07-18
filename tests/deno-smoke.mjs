@@ -1,7 +1,7 @@
 import {
 	DrizzleMySQLAdapter,
 	DrizzlePostgreSQLAdapter,
-	DrizzleSQLiteAdapter
+	DrizzleSQLiteAdapter,
 } from "@ducheved/neko-lucia-adapter-drizzle";
 import { generateIdFromEntropySize, Lucia } from "@ducheved/neko-lucia";
 
@@ -19,9 +19,7 @@ class MemoryAdapter {
 	}
 
 	getUserSessions(userId) {
-		return Promise.resolve(
-			[...this.sessions.values()].filter((session) => session.userId === userId)
-		);
+		return Promise.resolve([...this.sessions.values()].filter((session) => session.userId === userId));
 	}
 
 	setSession(session) {
@@ -71,11 +69,7 @@ for (const sessionTokenVersion of [1, 2]) {
 	if (cookie.value !== created.token) throw new Error("cookie value failed");
 	if (JSON.stringify(cookie).includes(created.token)) throw new Error("serialized cookie value");
 	if (lucia.readSessionCookie(cookie.serialize()) !== created.token) throw new Error("cookie failed");
-	if (
-		lucia.readSessionCookie(
-			`auth_session=${created.token}; auth_session=${created.token}`
-		) !== null
-	) {
+	if (lucia.readSessionCookie(`auth_session=${created.token}; auth_session=${created.token}`) !== null) {
 		throw new Error("duplicate cookie accepted");
 	}
 	if (sessionTokenVersion === 2) {
@@ -86,10 +80,6 @@ for (const sessionTokenVersion of [1, 2]) {
 	}
 }
 
-for (const adapterClass of [
-	DrizzleMySQLAdapter,
-	DrizzlePostgreSQLAdapter,
-	DrizzleSQLiteAdapter
-]) {
+for (const adapterClass of [DrizzleMySQLAdapter, DrizzlePostgreSQLAdapter, DrizzleSQLiteAdapter]) {
 	if (typeof adapterClass !== "function") throw new Error("adapter import failed");
 }

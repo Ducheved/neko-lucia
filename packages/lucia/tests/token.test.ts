@@ -2,12 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { generateIdFromEntropySize } from "../src/index.js";
-import {
-	createLegacySessionToken,
-	createSessionToken,
-	parseSessionToken,
-	verifySessionSecret
-} from "../src/token.js";
+import { createLegacySessionToken, createSessionToken, parseSessionToken, verifySessionSecret } from "../src/token.js";
 
 test("matches the Lucia v3 Base32 output", (context) => {
 	context.mock.method(
@@ -18,7 +13,7 @@ test("matches the Lucia v3 Base32 output", (context) => {
 				array.set([102, 111, 111]);
 			}
 			return array;
-		}
+		},
 	);
 	assert.equal(generateIdFromEntropySize(3), "mzxw6");
 });
@@ -29,7 +24,7 @@ test("preserves the Lucia v3 entropy ID contract", () => {
 		[8, 13],
 		[10, 16],
 		[15, 24],
-		[25, 40]
+		[25, 40],
 	]) {
 		const id = generateIdFromEntropySize(size);
 		assert.equal(id.length, length);
@@ -42,7 +37,7 @@ test("preserves the Lucia v3 entropy ID contract", () => {
 	assert.throws(() => generateIdFromEntropySize(Number.POSITIVE_INFINITY), RangeError);
 	assert.equal(generateIdFromEntropySize(65_536).length, 104_858);
 	assert.throws(() => generateIdFromEntropySize(65_537), {
-		name: "QuotaExceededError"
+		name: "QuotaExceededError",
 	});
 });
 
@@ -68,7 +63,7 @@ test("creates Lucia v3 compatible legacy tokens", () => {
 		assert.match(token, /^[a-z2-7]{40}$/);
 		assert.deepEqual(parseSessionToken(token), {
 			id: token,
-			tokenVersion: 1
+			tokenVersion: 1,
 		});
 	}
 });
@@ -84,7 +79,7 @@ test("rejects malformed and non-canonical tokens", () => {
 		`${material.token.slice(0, 30)}!${material.token.slice(31)}`,
 		"1".repeat(40),
 		"2".repeat(39),
-		"_".repeat(40)
+		"_".repeat(40),
 	];
 	for (const value of cases) {
 		assert.equal(parseSessionToken(value), null);

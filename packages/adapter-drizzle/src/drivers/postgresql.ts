@@ -4,19 +4,14 @@ import { normalizeSecretHash, serializeSecretHash } from "../secret.js";
 
 import type { Adapter, DatabaseSession, DatabaseUser, UserId } from "@ducheved/neko-lucia";
 import type { TablesRelationalConfig } from "drizzle-orm/relations";
-import type {
-	AnyPgColumn,
-	AnyPgTable,
-	PgDatabase,
-	PgQueryResultHKT
-} from "drizzle-orm/pg-core";
+import type { AnyPgColumn, AnyPgTable, PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 export class DrizzlePostgreSQLAdapter<
 	TQueryResult extends PgQueryResultHKT = PgQueryResultHKT,
 	TFullSchema extends Record<string, unknown> = Record<string, never>,
 	TSchema extends TablesRelationalConfig = TablesRelationalConfig,
 	TSessionTable extends PostgreSQLSessionTable = PostgreSQLSessionTable,
-	TUserTable extends PostgreSQLUserTable = PostgreSQLUserTable
+	TUserTable extends PostgreSQLUserTable = PostgreSQLUserTable,
 > implements Adapter {
 	private db: PgDatabase<TQueryResult, TFullSchema, TSchema>;
 	private sessionTable: TSessionTable;
@@ -28,11 +23,7 @@ export class DrizzlePostgreSQLAdapter<
 		return this.userTable;
 	}
 
-	constructor(
-		db: PgDatabase<TQueryResult, TFullSchema, TSchema>,
-		sessionTable: TSessionTable,
-		userTable: TUserTable
-	) {
+	constructor(db: PgDatabase<TQueryResult, TFullSchema, TSchema>, sessionTable: TSessionTable, userTable: TUserTable) {
 		this.db = db;
 		this.sessionTable = sessionTable;
 		this.userTable = userTable;
@@ -47,31 +38,25 @@ export class DrizzlePostgreSQLAdapter<
 	}
 
 	public async getSessionAndUser(
-		sessionId: string
+		sessionId: string,
 	): Promise<[session: DatabaseSession | null, user: DatabaseUser | null]> {
 		const result = await this.db
 			.select({
 				user: this.queryUserTable,
-				session: this.querySessionTable
+				session: this.querySessionTable,
 			})
 			.from(this.querySessionTable)
-			.leftJoin(
-				this.queryUserTable,
-				eq(this.querySessionTable.userId, this.queryUserTable.id)
-			)
+			.leftJoin(this.queryUserTable, eq(this.querySessionTable.userId, this.queryUserTable.id))
 			.where(eq(this.querySessionTable.id, sessionId));
 		if (result.length !== 1 || result[0].session === null) return [null, null];
 		return [
 			transformIntoDatabaseSession(result[0].session),
-			result[0].user === null ? null : transformIntoDatabaseUser(result[0].user)
+			result[0].user === null ? null : transformIntoDatabaseUser(result[0].user),
 		];
 	}
 
 	public async getUserSessions(userId: UserId): Promise<DatabaseSession[]> {
-		const result = await this.db
-			.select()
-			.from(this.querySessionTable)
-			.where(eq(this.querySessionTable.userId, userId));
+		const result = await this.db.select().from(this.querySessionTable).where(eq(this.querySessionTable.userId, userId));
 		return result.map(transformIntoDatabaseSession);
 	}
 
@@ -82,7 +67,7 @@ export class DrizzlePostgreSQLAdapter<
 			userId: session.userId,
 			expiresAt: session.expiresAt,
 			secretHash: serializeSecretHash(session.tokenVersion, session.secretHash),
-			tokenVersion: session.tokenVersion
+			tokenVersion: session.tokenVersion,
 		} as PostgreSQLSessionTable["$inferInsert"];
 		await this.db.insert(this.querySessionTable).values(values);
 	}
@@ -95,9 +80,7 @@ export class DrizzlePostgreSQLAdapter<
 	}
 
 	public async deleteExpiredSessions(): Promise<void> {
-		await this.db
-			.delete(this.querySessionTable)
-			.where(lte(this.querySessionTable.expiresAt, new Date()));
+		await this.db.delete(this.querySessionTable).where(lte(this.querySessionTable.expiresAt, new Date()));
 	}
 }
 
@@ -113,8 +96,7 @@ type PostgreSQLSessionColumns = {
 	tokenVersion: AnyPgColumn<{ data: number }>;
 };
 
-export type PostgreSQLUserTable = AnyPgTable<{ columns: PostgreSQLUserColumns }> &
-	PostgreSQLUserColumns;
+export type PostgreSQLUserTable = AnyPgTable<{ columns: PostgreSQLUserColumns }> & PostgreSQLUserColumns;
 
 export type PostgreSQLSessionTable = AnyPgTable<{
 	columns: PostgreSQLSessionColumns;
@@ -130,7 +112,7 @@ function transformIntoDatabaseSession(raw: Record<string, unknown>): DatabaseSes
 		id,
 		userId: userId as UserId,
 		expiresAt,
-		attributes: attributes as DatabaseSession["attributes"]
+		attributes: attributes as DatabaseSession["attributes"],
 	};
 	if (tokenVersion === 1 && secretHash === null) {
 		return { ...base, tokenVersion: 1, secretHash: null };

@@ -1,7 +1,7 @@
 import {
 	DrizzleMySQLAdapter,
 	DrizzlePostgreSQLAdapter,
-	DrizzleSQLiteAdapter
+	DrizzleSQLiteAdapter,
 } from "@ducheved/neko-lucia-adapter-drizzle";
 import { generateIdFromEntropySize, Lucia } from "@ducheved/neko-lucia";
 
@@ -16,7 +16,7 @@ const lucia = new Lucia(adapter, {
 	},
 	getUserAttributes(attributes) {
 		return { handle: attributes.handle };
-	}
+	},
 });
 
 declare module "@ducheved/neko-lucia" {

@@ -5,13 +5,7 @@ export { Cookie } from "./cookie.js";
 export type { CookieAttributes } from "./cookie.js";
 export { verifyRequestOrigin } from "./request.js";
 
-export type {
-	User,
-	Session,
-	SessionWithToken,
-	SessionCookieOptions,
-	SessionCookieAttributesOptions
-} from "./core.js";
+export type { User, Session, SessionWithToken, SessionCookieOptions, SessionCookieAttributesOptions } from "./core.js";
 export type { DatabaseSession, DatabaseUser, Adapter } from "./database.js";
 
 import type { Lucia } from "./core.js";
@@ -27,10 +21,7 @@ export type UserId = Register extends {
 export type RegisteredLucia = Register extends {
 	Lucia: infer _Lucia;
 }
-	? _Lucia extends Lucia<
-			infer _SessionAttributes extends object,
-			infer _UserAttributes extends object
-		>
+	? _Lucia extends Lucia<infer _SessionAttributes extends object, infer _UserAttributes extends object>
 		? _Lucia
 		: Lucia
 	: Lucia;

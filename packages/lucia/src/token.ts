@@ -5,9 +5,7 @@ const base32Alphabet = "abcdefghijklmnopqrstuvwxyz234567";
 const base64UrlPattern = /^[A-Za-z0-9_-]+$/;
 const legacyPattern = /^[a-z2-7]{40}$/;
 
-export type ParsedSessionToken =
-	| { id: string; tokenVersion: 1 }
-	| { id: string; secret: Uint8Array; tokenVersion: 2 };
+export type ParsedSessionToken = { id: string; tokenVersion: 1 } | { id: string; secret: Uint8Array; tokenVersion: 2 };
 
 export function generateIdFromEntropySize(size: number): string {
 	return encodeBase32(globalThis.crypto.getRandomValues(new Uint8Array(size)));
@@ -38,7 +36,7 @@ export function createSessionToken(sessionId?: string): {
 	return {
 		id,
 		secretHash: hashSessionSecret(secret),
-		token
+		token,
 	};
 }
 
@@ -46,7 +44,7 @@ export function parseSessionToken(token: string): ParsedSessionToken | null {
 	if (legacyPattern.test(token)) {
 		return {
 			id: token,
-			tokenVersion: 1
+			tokenVersion: 1,
 		};
 	}
 	if (token.length !== 66 || token[22] !== "." || token.indexOf(".", 23) !== -1) {
@@ -64,7 +62,7 @@ export function parseSessionToken(token: string): ParsedSessionToken | null {
 	return {
 		id,
 		secret: secretBytes,
-		tokenVersion: 2
+		tokenVersion: 2,
 	};
 }
 

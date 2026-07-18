@@ -202,7 +202,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Verify source
-        run: pnpm lint && pnpm verify && pnpm test:deno
+        run: pnpm format:check && pnpm lint && pnpm lint:deno && pnpm verify && pnpm test:deno
 
       - name: Reject explicit any
         shell: bash
