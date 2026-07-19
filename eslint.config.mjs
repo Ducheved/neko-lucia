@@ -16,6 +16,7 @@ export default tseslint.config(
 			},
 		},
 		rules: {
+			eqeqeq: "error",
 			"no-console": "error",
 			"no-eval": "error",
 			"@typescript-eslint/consistent-type-imports": "error",
