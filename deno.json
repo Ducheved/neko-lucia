@@ -18,9 +18,12 @@
         "explicit-module-boundary-types",
         "no-console",
         "no-eval",
+        "no-non-null-asserted-optional-chain",
         "no-non-null-assertion",
+        "no-sparse-arrays",
         "no-throw-literal",
         "prefer-ascii",
+        "triple-slash-reference",
         "verbatim-module-syntax"
       ],
       "exclude": [
