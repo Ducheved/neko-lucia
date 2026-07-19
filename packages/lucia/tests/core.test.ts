@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import { Lucia } from "../src/core.js";
 import { TimeSpan } from "../src/date.js";
+import { isNil } from '../src/utils.js';
 
 import type { Adapter, DatabaseSession, DatabaseUser } from "../src/database.js";
 
@@ -16,7 +17,7 @@ class MemoryAdapter implements Adapter {
 	public async getSessionAndUser(sessionId: string): Promise<[DatabaseSession | null, DatabaseUser | null]> {
 		this.reads++;
 		const session = this.sessions.get(sessionId) ?? null;
-		const user = session === null ? null : (this.users.get(String(session.userId)) ?? null);
+		const user = isNil(session) ? null : (this.users.get(session.userId) ?? null);
 		return [session, user];
 	}
 
@@ -30,7 +31,7 @@ class MemoryAdapter implements Adapter {
 
 	public async updateSessionExpiration(sessionId: string, expiresAt: Date): Promise<void> {
 		const session = this.sessions.get(sessionId);
-		if (session !== undefined) {
+		if (!isNil(session)) {
 			session.expiresAt = expiresAt;
 			this.expirationUpdates++;
 		}
