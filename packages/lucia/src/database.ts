@@ -1,4 +1,4 @@
-import type { RegisteredDatabaseSessionAttributes, RegisteredDatabaseUserAttributes, UserId } from "./index.js";
+import type { RegisteredDatabaseSessionAttributes, RegisteredDatabaseUserAttributes, UserId } from "./types.js";
 
 export interface Adapter {
 	getSessionAndUser(sessionId: string): Promise<[session: DatabaseSession | null, user: DatabaseUser | null]>;
@@ -15,12 +15,13 @@ export interface DatabaseUser {
 	attributes: RegisteredDatabaseUserAttributes;
 }
 
-interface DatabaseSessionBase {
+// No reason to keep this type open when DatabaseSession will always be sealed
+type DatabaseSessionBase = {
 	userId: UserId;
 	expiresAt: Date;
 	id: string;
 	attributes: RegisteredDatabaseSessionAttributes;
-}
+};
 
 export type DatabaseSession = DatabaseSessionBase &
 	(

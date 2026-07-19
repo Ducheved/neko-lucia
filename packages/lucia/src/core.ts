@@ -9,7 +9,7 @@ import type {
 	RegisteredDatabaseUserAttributes,
 	RegisteredLucia,
 	UserId,
-} from "./index.js";
+} from "./types.js";
 
 type EmptyAttributes = Record<never, never>;
 
