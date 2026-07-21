@@ -9,6 +9,7 @@
 <p align="center">
   <a href="https://github.com/Ducheved/neko-lucia/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Ducheved/neko-lucia/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://www.npmjs.com/package/@ducheved/neko-lucia"><img alt="npm" src="https://img.shields.io/npm/v/%40ducheved%2Fneko-lucia?logo=npm"></a>
+<a href="https://app.fossa.com/projects/git%2Bgithub.com%2FDucheved%2Fneko-lucia?ref=badge_shield" alt="FOSSA Status"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2FDucheved%2Fneko-lucia.svg?type=shield"/></a>
   <a href="https://www.npmjs.com/package/@ducheved/neko-lucia-adapter-drizzle"><img alt="adapter npm" src="https://img.shields.io/npm/v/%40ducheved%2Fneko-lucia-adapter-drizzle?label=adapter&logo=npm"></a>
   <img alt="Node 22, 24, and 26" src="https://img.shields.io/badge/Node-22.23.1%20%7C%2024.18.0%20%7C%2026-339933?logo=nodedotjs&logoColor=white">
   <img alt="Deno 2.9+" src="https://img.shields.io/badge/Deno-2.9%2B-000000?logo=deno&logoColor=white">
@@ -21,6 +22,9 @@
 | --- | --- |
 | [`@ducheved/neko-lucia`](./packages/lucia) | Session lifecycle, strict token parsing, cookies, and typed attributes |
 | [`@ducheved/neko-lucia-adapter-drizzle`](./packages/adapter-drizzle) | Drizzle adapters for PostgreSQL, MySQL, and SQLite |
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FDucheved%2Fneko-lucia.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FDucheved%2Fneko-lucia?ref=badge_large)
 
 ## What it supports
 
