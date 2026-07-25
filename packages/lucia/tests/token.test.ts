@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { webcrypto } from "node:crypto";
 import { test, type TestContext } from "node:test";
 
 import {
@@ -11,7 +12,7 @@ import {
 
 test("matches the Lucia v3 Base32 output", (context: TestContext) => {
 	context.mock.method(
-		globalThis.crypto,
+		webcrypto,
 		"getRandomValues",
 		<ArrayType extends ArrayBufferView | null>(array: ArrayType): ArrayType => {
 			if (array instanceof Uint8Array) {

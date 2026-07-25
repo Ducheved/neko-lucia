@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { Lucia } from "../src/core.js";
 import { TimeSpan } from "../src/date.js";
-import { isNil } from '../src/utils.js';
+import { isNil } from "../src/utils.js";
 
 import type { Adapter, DatabaseSession, DatabaseUser } from "../src/database.js";
 
