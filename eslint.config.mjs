@@ -1,5 +1,11 @@
 import eslint from "@eslint/js";
+import n from "eslint-plugin-n";
 import tseslint from "typescript-eslint";
+import semver from "semver";
+
+import manifest from "./package.json" with { type: "json" };
+
+const MIN_NODE_VERSION = semver.minVersion(manifest.engines.node).version;
 
 export default tseslint.config(
 	{
@@ -16,9 +22,19 @@ export default tseslint.config(
 			},
 		},
 		rules: {
+			/** Generic rules */
 			eqeqeq: "error",
 			"no-console": "error",
 			"no-eval": "error",
+			/** Ported from deno lint */
+			"no-import-assign": "error",
+			"no-inner-declarations": "error",
+			"no-restricted-globals": ["error", "window"],
+			"no-sparse-arrays": "error",
+			"no-unreachable": "error",
+			"no-unsafe-negation": "error",
+			"@typescript-eslint/adjacent-overload-signatures": "error",
+			/** Typescript rules */
 			"@typescript-eslint/consistent-type-imports": "error",
 			"@typescript-eslint/explicit-module-boundary-types": "error",
 			"@typescript-eslint/await-thenable": "off",
@@ -34,6 +50,46 @@ export default tseslint.config(
 					argsIgnorePattern: "^_",
 					varsIgnorePattern: "^_",
 				},
+			],
+		},
+	},
+	{
+		files: ["packages/*/src/**/*.ts"],
+		plugins: { n },
+		rules: {
+			/** Strict deno compatibility (did not error under denolint) */
+			"n/prefer-node-protocol": "error",
+			"n/file-extension-in-import": ["error", "always"],
+			/** Strict node compatibility */
+			"n/no-deprecated-api": "error",
+			"n/no-extraneous-import": "error",
+			"n/no-missing-import": "error",
+			"n/no-process-env": "error",
+			"n/no-sync": "error",
+			"n/no-top-level-await": [
+				"error",
+				{ convertPath: [{ include: ["**/src/**/*.ts"], replace: ["src/(.*)\\.ts$", "dist/$1.js"] }] },
+			],
+			"n/no-unpublished-import": [
+				"error",
+				{ convertPath: [{ include: ["**/src/**/*.ts"], replace: ["src/(.*)\\.ts$", "dist/$1.js"] }] },
+			],
+			"n/no-unsupported-features/es-builtins": ["error", { version: MIN_NODE_VERSION }],
+			"n/no-unsupported-features/es-syntax": ["error", { version: MIN_NODE_VERSION }],
+			"n/no-unsupported-features/node-builtins": ["error", { version: MIN_NODE_VERSION }],
+			"no-restricted-globals": [
+				"error",
+				"window",
+				"__dirname",
+				"__filename",
+				"module",
+				"exports",
+				"require",
+				"global",
+				"Buffer",
+				"process",
+				"setImmediate",
+				"clearImmediate",
 			],
 		},
 	},

@@ -9,7 +9,6 @@
     "format": "prettier --write eslint.config.mjs \"packages/**/*.{ts,mjs}\" \"tests/**/*.{ts,mjs}\"",
     "format:check": "prettier --check eslint.config.mjs \"packages/**/*.{ts,mjs}\" \"tests/**/*.{ts,mjs}\"",
     "lint": "eslint \"packages/**/*.ts\" \"tests/**/*.ts\"",
-    "lint:deno": "deno lint",
     "test": "pnpm --filter @ducheved/neko-lucia run build && pnpm -r --filter @ducheved/neko-lucia --filter @ducheved/neko-lucia-adapter-drizzle run test",
     "test:deno": "deno run --sloppy-imports --node-modules-dir=manual tests/deno-smoke.mjs",
     "typecheck": "pnpm --filter @ducheved/neko-lucia run build && pnpm -r --filter @ducheved/neko-lucia --filter @ducheved/neko-lucia-adapter-drizzle run typecheck",
@@ -33,7 +32,9 @@
     "@types/node": "22.20.1",
     "drizzle-orm": "0.45.2",
     "eslint": "10.7.0",
+    "eslint-plugin-n": "18.2.2",
     "prettier": "3.9.5",
+    "semver": "7.8.5",
     "typescript": "6.0.3",
     "typescript-eslint": "8.64.0"
   }
