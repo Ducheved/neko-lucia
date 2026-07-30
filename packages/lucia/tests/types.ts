@@ -1,5 +1,5 @@
 import type { Lucia, Session } from "../src/core.js";
-import type { generateIdFromEntropySize } from "../src/index.js";
+import type { generateIdFromEntropySize } from "../src/token.js";
 
 type Equal<Left, Right> =
 	(<Value>() => Value extends Left ? 1 : 2) extends <Value>() => Value extends Right ? 1 : 2 ? true : false;

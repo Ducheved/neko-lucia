@@ -1,4 +1,5 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { Buffer } from "node:buffer";
+import { createHash, randomBytes, timingSafeEqual, webcrypto } from "node:crypto";
 
 const BASE_32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
 
@@ -9,7 +10,7 @@ const LEGACY_TOKEN_RE = /^[a-z2-7]{40}$/;
 export type ParsedSessionToken = { id: string; tokenVersion: 1 } | { id: string; secret: Uint8Array; tokenVersion: 2 };
 
 export function generateIdFromEntropySize(size: number): string {
-	return encodeBase32(globalThis.crypto.getRandomValues(new Uint8Array(size)));
+	return encodeBase32(webcrypto.getRandomValues(new Uint8Array(size)));
 }
 
 export function createLegacySessionToken(sessionId?: string): string {
