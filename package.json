@@ -5,14 +5,18 @@
   "private": true,
   "packageManager": "pnpm@11.14.0",
   "scripts": {
-    "build": "pnpm -r --filter @ducheved/neko-lucia --filter @ducheved/neko-lucia-adapter-drizzle run build",
+    "build": "pnpm -r run build",
+    "build:lucia": "pnpm --filter @ducheved/neko-lucia run build",
     "format": "prettier --write eslint.config.mjs \"packages/**/*.{ts,mjs}\" \"tests/**/*.{ts,mjs}\"",
     "format:check": "prettier --check eslint.config.mjs \"packages/**/*.{ts,mjs}\" \"tests/**/*.{ts,mjs}\"",
-    "lint": "pnpm --filter @ducheved/neko-lucia run build && eslint \"packages/**/*.ts\" \"tests/**/*.ts\"",
-    "test": "pnpm --filter @ducheved/neko-lucia run build && pnpm -r --filter @ducheved/neko-lucia --filter @ducheved/neko-lucia-adapter-drizzle run test",
+    "lint": "pnpm run build:lucia && pnpm run lint-only",
+    "lint-only": "eslint \"packages/**/*.ts\" \"tests/**/*.ts\"",
+    "test": "pnpm run build:lucia && pnpm run test-only",
+    "test-only": "pnpm -r run test",
     "test:deno": "deno run --sloppy-imports --node-modules-dir=manual tests/deno-smoke.mjs",
-    "typecheck": "pnpm --filter @ducheved/neko-lucia run build && pnpm -r --filter @ducheved/neko-lucia --filter @ducheved/neko-lucia-adapter-drizzle run typecheck",
-    "verify": "pnpm typecheck && pnpm test && pnpm build"
+    "typecheck": "pnpm run build:lucia && pnpm run typecheck-only",
+    "typecheck-only": "pnpm -r run typecheck",
+    "verify": "pnpm run typecheck && pnpm run test && pnpm run build"
   },
   "author": "Ducheved",
   "license": "MIT",
